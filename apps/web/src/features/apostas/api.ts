@@ -2,6 +2,7 @@ import { apostaParaRpc, type ApostaInput } from '@shared/schemas/aposta.ts'
 
 import { supabase } from '@/lib/supabase'
 import type { Enums, Tables } from '@/types/database'
+import type { ApostaParaCopiar } from './texto-copia'
 
 export type ResumoAposta = Tables<'vw_apostas_resumo'>
 export type TipoAposta = Enums<'tipo_aposta'>
@@ -29,8 +30,8 @@ const colunaOrdem = {
   saldo: 'saldo_centavos',
 } as const
 
-/** Uma página da lista de apostas (paginação por faixa, 20 por vez). */
-export async function listarApostas(filtros: FiltrosApostas, pagina: number) {
+/** Resumo das apostas com os filtros da lista aplicados (sem ordem nem página). */
+function apostasFiltradas(filtros: FiltrosApostas) {
   let q = supabase.from('vw_apostas_resumo').select('*')
   if (filtros.modalidade) q = q.eq('modalidade_slug', filtros.modalidade)
   if (filtros.tipo) q = q.eq('tipo', filtros.tipo)
@@ -41,14 +42,55 @@ export async function listarApostas(filtros: FiltrosApostas, pagina: number) {
   if (filtros.premiadas) q = q.eq('status', 'premiada')
   if (filtros.concurso)
     q = q.lte('concurso_inicial', filtros.concurso).gte('concurso_final', filtros.concurso)
+  return q
+}
 
+/** Uma página da lista de apostas (paginação por faixa, 20 por vez). */
+export async function listarApostas(filtros: FiltrosApostas, pagina: number) {
   const inicio = pagina * TAMANHO_PAGINA
-  const { data, error } = await q
+  const { data, error } = await apostasFiltradas(filtros)
     .order(colunaOrdem[filtros.ordem], { ascending: filtros.direcao === 'asc' })
     .order('created_at', { ascending: false })
     .range(inicio, inicio + TAMANHO_PAGINA - 1)
   if (error) throw error
   return data
+}
+
+/**
+ * Ids de TODAS as apostas de um dia com os filtros da lista, na ordem da lista. Não depende
+ * da paginação: o lote do dia pode ter apostas que ainda não foram carregadas na tela.
+ */
+export async function idsDoDia(filtros: FiltrosApostas, dia: string) {
+  const { data, error } = await apostasFiltradas(filtros)
+    .eq('data_aposta', dia)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data.flatMap((a) => (a.id ? [a.id] : []))
+}
+
+/** Modalidade, concursos e jogos das apostas, para copiar como texto (na ordem dos ids). */
+export async function apostasParaCopiar(ids: string[]): Promise<ApostaParaCopiar[]> {
+  const { data, error } = await supabase
+    .from('apostas')
+    .select(
+      'id, tipo, concurso_inicial, qtd_concursos, modalidades (nome), aposta_jogos (ordem, dezenas)',
+    )
+    .in('id', ids)
+  if (error) throw error
+  const porId = new Map(data.map((a) => [a.id, a]))
+  return ids.flatMap((id) => {
+    const a = porId.get(id)
+    if (!a) return []
+    return [
+      {
+        modalidadeNome: a.modalidades?.nome ?? '',
+        tipo: a.tipo,
+        concursoInicial: a.concurso_inicial,
+        qtdConcursos: a.qtd_concursos,
+        jogos: [...a.aposta_jogos].sort((x, y) => x.ordem - y.ordem).map((j) => j.dezenas),
+      },
+    ]
+  })
 }
 
 /** Aposta completa para o detalhe e para a edição. */

@@ -20,6 +20,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { BolaDezena, ListaDezenas } from '@/components/bola-dezena'
+import { BotaoCopiar } from '@/components/botao-copiar'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { EmptyState } from '@/components/empty-state'
 import { ModalidadeChip } from '@/components/modalidade-chip'
@@ -41,6 +42,7 @@ import { carregarAposta, excluirApostas, type ApostaCompleta } from './api'
 import { InformarResultado } from './detalhe/informar-resultado'
 import { PremioCard } from './detalhe/premio-card'
 import { rotulosOrigem, rotulosTipo } from './filtros'
+import { textoDaAposta } from './texto-copia'
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -556,6 +558,22 @@ export function ApostaDetalhePage() {
               <Pencil aria-hidden="true" /> Editar
             </Link>
           </Button>
+          <BotaoCopiar
+            variant="outline"
+            size="default"
+            texto="Copiar"
+            aria-label={`Copiar jogos de ${nome} ${faixaConcursos}`}
+            mensagemSucesso="Jogos copiados."
+            obterTexto={() =>
+              textoDaAposta({
+                modalidadeNome: nome,
+                tipo: a.tipo,
+                concursoInicial: a.concurso_inicial,
+                qtdConcursos: a.qtd_concursos,
+                jogos: a.aposta_jogos.map((j) => j.dezenas),
+              })
+            }
+          />
           <ConfirmDialog
             titulo={`Excluir a aposta ${nome} ${faixaConcursos}?`}
             descricao="Os jogos, a divisão e os anexos também serão excluídos. Não dá para desfazer."

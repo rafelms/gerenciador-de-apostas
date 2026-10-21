@@ -14,6 +14,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
+import { BotaoCopiar } from '@/components/botao-copiar'
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { Campo } from '@/components/campo'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -29,7 +30,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useModalidades } from '@/features/modalidades/use-modalidades'
 import { formatarData } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
-import { excluirApostas, listarApostas, TAMANHO_PAGINA, type FiltrosApostas } from './api'
+import {
+  apostasParaCopiar,
+  excluirApostas,
+  idsDoDia,
+  listarApostas,
+  TAMANHO_PAGINA,
+  type FiltrosApostas,
+  type ResumoAposta,
+} from './api'
 import { ApostaCard } from './aposta-card'
 import {
   filtrosDaUrl,
@@ -40,6 +49,19 @@ import {
   STATUS,
   TIPOS,
 } from './filtros'
+import { textoDoLote } from './texto-copia'
+
+/** Apostas seguidas do mesmo dia (a lista ordenada por data já as traz juntas). */
+function agruparPorDia(apostas: ResumoAposta[]) {
+  const grupos: { dia: string; apostas: ResumoAposta[] }[] = []
+  for (const a of apostas) {
+    const dia = a.data_aposta ?? ''
+    const ultimo = grupos.at(-1)
+    if (ultimo?.dia === dia) ultimo.apostas.push(a)
+    else grupos.push({ dia, apostas: [a] })
+  }
+  return grupos
+}
 
 function PainelFiltros({
   filtros,
@@ -254,6 +276,28 @@ export function ApostasListaPage() {
   if (filtros.concurso)
     ativos.push({ rotulo: `Concurso ${filtros.concurso}`, remover: { concurso: undefined } })
 
+  const cards = (itens: ResumoAposta[]) => (
+    <ul className="grid gap-3 lg:grid-cols-2">
+      {itens.map((a) => (
+        <li key={a.id}>
+          <ApostaCard
+            aposta={a}
+            selecionando={selecionando}
+            selecionada={selecionadas.has(a.id!)}
+            onSelecionar={(sel) =>
+              setSelecionadas((s) => {
+                const novo = new Set(s)
+                if (sel) novo.add(a.id!)
+                else novo.delete(a.id!)
+                return novo
+              })
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  )
+
   return (
     <>
       <CabecalhoPagina
@@ -406,27 +450,34 @@ export function ApostasListaPage() {
         />
       )}
 
-      {apostas.length > 0 && (
-        <ul className="grid gap-3 lg:grid-cols-2">
-          {apostas.map((a) => (
-            <li key={a.id}>
-              <ApostaCard
-                aposta={a}
-                selecionando={selecionando}
-                selecionada={selecionadas.has(a.id!)}
-                onSelecionar={(sel) =>
-                  setSelecionadas((s) => {
-                    const novo = new Set(s)
-                    if (sel) novo.add(a.id!)
-                    else novo.delete(a.id!)
-                    return novo
-                  })
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+      {apostas.length > 0 &&
+        (filtros.ordem === 'data' ? (
+          <div className="grid gap-6">
+            {agruparPorDia(apostas).map((g) => (
+              <section key={g.dia} aria-labelledby={`dia-${g.dia}`} className="grid gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 id={`dia-${g.dia}`} className="text-sm font-semibold text-muted-foreground">
+                    {g.dia ? formatarData(g.dia) : 'Sem data'}
+                  </h2>
+                  {g.dia && (
+                    <BotaoCopiar
+                      variant="outline"
+                      texto="Copiar lote"
+                      aria-label={`Copiar lote de ${formatarData(g.dia)}`}
+                      mensagemSucesso="Apostas do dia copiadas."
+                      obterTexto={async () =>
+                        textoDoLote(g.dia, await apostasParaCopiar(await idsDoDia(filtros, g.dia)))
+                      }
+                    />
+                  )}
+                </div>
+                {cards(g.apostas)}
+              </section>
+            ))}
+          </div>
+        ) : (
+          cards(apostas)
+        ))}
 
       <div ref={sentinela} className="flex justify-center py-6">
         {consulta.hasNextPage && (
