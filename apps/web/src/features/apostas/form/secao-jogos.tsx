@@ -1,6 +1,6 @@
 import { formatarBRL } from '@shared/dinheiro.ts'
-import { parseDezenas } from '@shared/regras/index.ts'
-import { ClipboardPaste, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
+import { jogoEspelho, parseDezenas } from '@shared/regras/index.ts'
+import { ClipboardPaste, Copy, FlipHorizontal2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useFieldArray, useFormContext } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -180,6 +180,23 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
                 >
                   <Copy aria-hidden="true" />
                 </Button>
+                {modalidade.regra.espelho && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={dezenas.length !== modalidade.regra.minMarcadas}
+                    onClick={() => {
+                      insert(i + 1, { dezenas: jogoEspelho(modalidade.regra, dezenas)! })
+                      setAtivo(i + 1)
+                      toast.success(`Aposta-Espelho do jogo ${i + 1} adicionada.`)
+                    }}
+                    aria-label={`Aposta-Espelho do jogo ${i + 1}`}
+                    title="Aposta-Espelho: os outros números do volante"
+                  >
+                    <FlipHorizontal2 aria-hidden="true" />
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"

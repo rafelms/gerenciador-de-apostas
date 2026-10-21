@@ -147,7 +147,8 @@ describe('utilitários de modalidade', () => {
     expect(obterRegra('quina').nome).toBe('Quina')
     expect(() => obterRegra('timemania')).toThrow()
     expect(ehSlugSuportado('megasena')).toBe(true)
-    expect(ehSlugSuportado('lotomania')).toBe(false)
+    expect(ehSlugSuportado('lotomania')).toBe(true)
+    expect(ehSlugSuportado('duplasena')).toBe(false)
     expect(SLUGS_MVP).toEqual(['megasena', 'lotofacil', 'quina'])
   })
 

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { tarifaDentroDoLimite } from '../aposta.ts'
 import { obterRegra } from '../regras/index.ts'
 
-export const slugModalidadeSchema = z.enum(['megasena', 'lotofacil', 'quina'])
+export const slugModalidadeSchema = z.enum(['megasena', 'lotofacil', 'quina', 'lotomania'])
 export const tipoApostaSchema = z.enum(['simples', 'bolao', 'teimosinha'])
 
 const centavos = z.number().int('Valor inválido.')
@@ -145,9 +145,24 @@ export const apostaSchema = z
           ctx.addIssue({ code: 'custom', path: ['jogos', i], message: `Jogo ${i + 1}: ${erro}` })
         }
       })
+      // Algumas modalidades só aceitam quantidades fixas na teimosinha (Lotomania: 2, 3, 4, 6, 8, 9 ou 12).
+      const aceitas = regra.teimosinhaConcursos
+      if (
+        a.tipo === 'teimosinha' &&
+        aceitas &&
+        Number.isInteger(a.qtdConcursos) &&
+        !aceitas.includes(a.qtdConcursos)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['qtdConcursos'],
+          message: `A teimosinha da ${regra.nome} vale para ${aceitas.slice(0, -1).join(', ')} ou ${aceitas.at(-1)} concursos.`,
+        })
+      }
     },
-    // Roda mesmo que outros campos falhem (ex.: valor pago ainda vazio): o erro das dezenas
-    // precisa aparecer no formulário. Só depende de modalidade e jogos estarem bem formados.
+    // Regras que dependem da modalidade. Rodam mesmo que outros campos falhem (ex.: valor
+    // pago ainda vazio): o erro das dezenas precisa aparecer no formulário. Só dependem de
+    // modalidade e jogos estarem bem formados.
     {
       when: (p) =>
         !p.issues.some((i) => i.path?.[0] === 'modalidadeSlug' || i.path?.[0] === 'jogos'),

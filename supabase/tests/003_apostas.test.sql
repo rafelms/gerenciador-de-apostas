@@ -115,7 +115,7 @@ reset role;
 -- ===========================================================================
 select tests.autenticar(:'a_id');
 
-select is((select count(*)::int from public.modalidades), 3, 'autenticado lê as 3 modalidades do MVP');
+select is((select count(*)::int from public.modalidades), 4, 'autenticado lê as 4 modalidades (MVP + Lotomania)');
 select is(public.fn_preco_vigente(1::smallint, '2026-10-14'), 600::bigint, 'preço vigente da Mega = R$ 6,00');
 
 -- Dezenas inválidas são rejeitadas pelo banco

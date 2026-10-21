@@ -43,10 +43,16 @@ export function SecaoTipoConcurso({
       setValue('concursoInicial', String(sugestao))
   }, [edicao, sugestao, getValues, setValue])
 
+  // Lotomania: a teimosinha só vale para quantidades fixas (2, 3, 4, 6, 8, 9 ou 12).
+  const qtdsFixas = modalidade?.regra.teimosinhaConcursos ?? null
+  const qtdConcursos = watch('qtdConcursos')
+
   function escolherTipo(novo: FormAposta['tipo']) {
     setValue('tipo', novo)
-    if (novo === 'teimosinha' && Number(getValues('qtdConcursos')) < 2)
-      setValue('qtdConcursos', '2')
+    const atual = Number(getValues('qtdConcursos'))
+    if (novo === 'teimosinha' && qtdsFixas && !qtdsFixas.includes(atual))
+      setValue('qtdConcursos', String(qtdsFixas[0]))
+    else if (novo === 'teimosinha' && atual < 2) setValue('qtdConcursos', '2')
     if (novo !== 'teimosinha') setValue('qtdConcursos', '1')
   }
 
@@ -108,7 +114,7 @@ export function SecaoTipoConcurso({
           <Input inputMode="numeric" autoComplete="off" {...register('concursoInicial')} />
         </Campo>
 
-        {tipo === 'teimosinha' && (
+        {tipo === 'teimosinha' && !qtdsFixas && (
           <Campo
             label="Quantidade de concursos"
             erro={erros.qtdConcursos?.message}
@@ -124,6 +130,45 @@ export function SecaoTipoConcurso({
           </Campo>
         )}
       </div>
+
+      {tipo === 'teimosinha' && qtdsFixas && (
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium">Quantidade de concursos</legend>
+          <div
+            role="radiogroup"
+            aria-label="Quantidade de concursos"
+            className="flex flex-wrap gap-2"
+          >
+            {qtdsFixas.map((q) => (
+              <button
+                key={q}
+                type="button"
+                role="radio"
+                aria-checked={qtdConcursos === String(q)}
+                onClick={() =>
+                  setValue('qtdConcursos', String(q), { shouldValidate: formState.isSubmitted })
+                }
+                className={cn(
+                  'min-h-11 min-w-11 rounded-full border px-3 text-sm font-semibold tabular-nums transition-colors duration-150',
+                  qtdConcursos === String(q)
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'bg-card hover:bg-accent',
+                )}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            A {modalidade?.nome} aceita só estas quantidades de concursos seguidos.
+          </p>
+          {erros.qtdConcursos?.message && (
+            <p role="alert" className="mt-1.5 text-sm font-medium text-destructive">
+              {erros.qtdConcursos.message}
+            </p>
+          )}
+        </fieldset>
+      )}
     </div>
   )
 }
