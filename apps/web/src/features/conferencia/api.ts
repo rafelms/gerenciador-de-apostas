@@ -1,5 +1,6 @@
 import { configDoBanco, type ConfigPremio } from '@shared/premio.ts'
 import { rateioDoBanco } from '@shared/resultados.ts'
+import type { ResultadoManualInput } from '@shared/schemas/resultados.ts'
 
 import { supabase } from '@/lib/supabase'
 import type { Tables, TablesInsert } from '@/types/database'
@@ -16,6 +17,8 @@ export interface ConcursoDaAposta {
     dataSorteio: string
     dezenas: number[]
     rateio: ReturnType<typeof rateioDoBanco>
+    acumulado: boolean | null
+    /** api_caixa (oficial), manual (admin) ou usuario (informado por um usuário). */
     fonte: string
   } | null
   /** Conferência por jogo (aposta_jogo_id → acertos/dezenas). */
@@ -40,7 +43,7 @@ export async function carregarConferencia(aposta: {
   const [concursos, conferencias, premios] = await Promise.all([
     supabase
       .from('concursos')
-      .select('id, numero, data_sorteio, dezenas, rateio, fonte')
+      .select('id, numero, data_sorteio, dezenas, rateio, acumulado, fonte')
       .eq('modalidade_id', aposta.modalidade_id)
       .gte('numero', aposta.concurso_inicial)
       .lte('numero', fim),
@@ -78,6 +81,7 @@ export async function carregarConferencia(aposta: {
             dataSorteio: c.data_sorteio,
             dezenas: c.dezenas!,
             rateio: rateioDoBanco(c.rateio),
+            acumulado: c.acumulado,
             fonte: c.fonte,
           }
         : null,
@@ -119,6 +123,22 @@ export async function conferirApostaAgora(apostaId: string) {
   })
   if (error) throw new Error(await mensagemDaFunction(error, 'Não foi possível conferir agora.'))
   return data!
+}
+
+/**
+ * Resultado informado pelo usuário para um concurso da própria aposta, enquanto a API
+ * da CAIXA não traz o oficial. Vale para todas as apostas do concurso e é substituído
+ * pelo oficial na próxima sincronização.
+ */
+export async function informarResultado(apostaId: string, r: ResultadoManualInput) {
+  const { data, error } = await supabase.functions.invoke<{
+    concurso_id: number
+    apostasConferidas: number
+    premiadas: number
+  }>('sync-resultados/informar', { body: { apostaId, ...r } })
+  if (error || !data)
+    throw new Error(await mensagemDaFunction(error, 'Não foi possível salvar o resultado.'))
+  return data
 }
 
 export async function marcarResgatado(premioId: string, resgatado: boolean) {

@@ -8,6 +8,8 @@ export interface UltimoResultado {
   acumulado: boolean | null
   dataProximo: string | null
   valorEstimadoProximoCentavos: number | null
+  /** 'usuario' = informado por um usuário, ainda não confirmado pela API. */
+  fonte: string
 }
 
 /** Último concurso SORTEADO de cada modalidade (seção 11.5). */
@@ -17,7 +19,7 @@ export async function ultimosResultados(modalidadeIds: number[]): Promise<Ultimo
       supabase
         .from('concursos')
         .select(
-          'modalidade_id, numero, data_sorteio, dezenas, acumulado, data_proximo, valor_estimado_proximo_centavos',
+          'modalidade_id, numero, data_sorteio, dezenas, acumulado, data_proximo, valor_estimado_proximo_centavos, fonte',
         )
         .eq('modalidade_id', id)
         .not('dezenas', 'is', null)
@@ -38,6 +40,7 @@ export async function ultimosResultados(modalidadeIds: number[]): Promise<Ultimo
             acumulado: data.acumulado,
             dataProximo: data.data_proximo,
             valorEstimadoProximoCentavos: data.valor_estimado_proximo_centavos,
+            fonte: data.fonte,
           },
         ]
       : []

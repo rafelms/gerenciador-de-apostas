@@ -38,6 +38,7 @@ import { formatarData, formatarDataHora } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
 import { carregarAposta, excluirApostas, type ApostaCompleta } from './api'
+import { InformarResultado } from './detalhe/informar-resultado'
 import { PremioCard } from './detalhe/premio-card'
 import { rotulosOrigem, rotulosTipo } from './filtros'
 
@@ -137,6 +138,17 @@ function Jogos({
   regra: RegraModalidade
 }) {
   const sorteadas = concurso?.resultado?.dezenas ?? null
+  const naoOficial = concurso?.resultado?.fonte === 'usuario'
+  const informar = (atual: ConcursoDaAposta['resultado']) =>
+    concurso && (
+      <InformarResultado
+        apostaId={aposta.id}
+        slug={aposta.modalidades?.slug ?? ''}
+        regra={regra}
+        numero={concurso.numero}
+        atual={atual}
+      />
+    )
   return (
     <Card>
       <CardHeader>
@@ -153,6 +165,9 @@ function Jogos({
               {concurso.resultado.fonte === 'manual' && (
                 <span className="text-muted-foreground"> · lançado manualmente</span>
               )}
+              {naoOficial && (
+                <span className="text-alerta"> · informado por um usuário, não oficial</span>
+              )}
             </p>
             <ul className="flex flex-wrap gap-1.5" aria-label="Dezenas sorteadas">
               {concurso.resultado.dezenas.map((d) => (
@@ -161,6 +176,12 @@ function Jogos({
                 </li>
               ))}
             </ul>
+            {naoOficial && (
+              <div className="flex flex-wrap items-center gap-2">
+                {informar(concurso.resultado)}
+                <ConferirAgora apostaId={aposta.id} />
+              </div>
+            )}
           </div>
         ) : (
           concurso && (
@@ -169,7 +190,10 @@ function Jogos({
                 <CalendarClock className="size-4" aria-hidden="true" /> Aguardando resultado oficial
                 do concurso {concurso.numero}.
               </p>
-              <ConferirAgora apostaId={aposta.id} />
+              <div className="flex flex-wrap gap-2">
+                {informar(null)}
+                <ConferirAgora apostaId={aposta.id} />
+              </div>
             </div>
           )
         )}
