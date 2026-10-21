@@ -429,3 +429,10 @@ enabled = true
 # Edge Functions do LotoGestor
 [functions.admin-usuarios]
 verify_jwt = true
+
+# Chamada pelo cron (header x-cron-secret, sem JWT) ou pelo admin (JWT validado no código).
+[functions.sync-resultados]
+verify_jwt = false
+
+[functions.conferir-apostas]
+verify_jwt = true
