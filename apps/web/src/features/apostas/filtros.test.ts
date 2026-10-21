@@ -4,7 +4,9 @@ import { filtrosDaUrl, filtrosParaUrl } from './filtros'
 
 describe('filtros na URL', () => {
   it('ida e volta preserva os filtros', () => {
-    const url = new URLSearchParams('modalidade=megasena&tipo=bolao&status=premiada&de=2026-10-01&ate=2026-10-31&premiadas=1&concurso=3070&ordem=saldo&dir=asc&origem=pdf')
+    const url = new URLSearchParams(
+      'modalidade=megasena&tipo=bolao&status=premiada&de=2026-10-01&ate=2026-10-31&premiadas=1&concurso=3070&ordem=saldo&dir=asc&origem=pdf',
+    )
     const filtros = filtrosDaUrl(url)
     expect(filtros).toEqual({
       modalidade: 'megasena',

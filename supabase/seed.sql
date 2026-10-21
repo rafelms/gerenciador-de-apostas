@@ -48,5 +48,6 @@ join (values
   ('megasena',  3068, date '2026-10-09', '{5,12,23,34,45,56}'::smallint[], true,  date '2026-10-11'),
   ('megasena',  3069, date '2026-10-11', '{3,17,22,31,40,58}'::smallint[], true,  date '2026-10-14'),
   ('lotofacil', 3520, date '2026-10-11', '{1,2,4,5,7,9,10,12,14,16,18,20,21,23,25}'::smallint[], false, date '2026-10-13'),
-  ('quina',     6870, date '2026-10-11', '{8,19,33,57,71}'::smallint[], true, date '2026-10-13')
+  ('quina',     6870, date '2026-10-11', '{8,19,33,57,71}'::smallint[], true, date '2026-10-13'),
+  ('lotomania', 2989, date '2026-10-10', '{0,3,7,12,18,21,25,33,38,41,47,52,58,63,69,74,80,86,91,97}'::smallint[], true, date '2026-10-13')
 ) as c(slug, numero, data_sorteio, dezenas, acumulado, data_proximo) using (slug);

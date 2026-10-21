@@ -17,11 +17,18 @@ interface ApostaCardProps {
 }
 
 function textoConcursos(a: ResumoAposta) {
-  return a.qtd_concursos && a.qtd_concursos > 1 ? `${a.concurso_inicial}–${a.concurso_final}` : String(a.concurso_inicial)
+  return a.qtd_concursos && a.qtd_concursos > 1
+    ? `${a.concurso_inicial}–${a.concurso_final}`
+    : String(a.concurso_inicial)
 }
 
 /** Card da lista (seção 11.2): cor da modalidade só na borda esquerda. */
-export function ApostaCard({ aposta: a, selecionando, selecionada, onSelecionar }: ApostaCardProps) {
+export function ApostaCard({
+  aposta: a,
+  selecionando,
+  selecionada,
+  onSelecionar,
+}: ApostaCardProps) {
   const titulo = `${a.modalidade_nome} ${textoConcursos(a)}`
   const conteudo = (
     <>
@@ -33,7 +40,9 @@ export function ApostaCard({ aposta: a, selecionando, selecionada, onSelecionar 
       </div>
       <p className="text-sm text-muted-foreground">
         {a.tipo && rotulosTipo[a.tipo]}
-        {a.tipo === 'bolao' && a.bolao_cotas_usuario && ` (${a.bolao_cotas_usuario}/${a.bolao_total_cotas} cotas)`}
+        {a.tipo === 'bolao' &&
+          a.bolao_cotas_usuario &&
+          ` (${a.bolao_cotas_usuario}/${a.bolao_total_cotas} cotas)`}
         {' · '}
         {a.qtd_jogos} {a.qtd_jogos === 1 ? 'jogo' : 'jogos'}
         {a.max_dezenas ? ` de ${a.max_dezenas}` : ''}
@@ -50,13 +59,23 @@ export function ApostaCard({ aposta: a, selecionando, selecionada, onSelecionar 
           <dt className="text-xs text-muted-foreground">Prêmio</dt>
           <dd className="font-medium">
             <MoneyText centavos={a.recuperado_usuario_centavos ?? 0} />
+            {a.premio_valor_pendente && (
+              <span className="block text-xs font-normal text-alerta">a confirmar</span>
+            )}
+            {!a.premio_valor_pendente && a.premio_a_resgatar && (
+              <span className="block text-xs font-normal text-destaque-texto">a resgatar</span>
+            )}
           </dd>
         </div>
         <div className="text-right">
-          <dt className="text-xs text-muted-foreground">{a.melhor_acerto !== null ? 'Melhor acerto' : 'Saldo'}</dt>
+          <dt className="text-xs text-muted-foreground">
+            {a.melhor_acerto !== null ? 'Melhor acerto' : 'Saldo'}
+          </dt>
           <dd className="font-medium">
             {a.melhor_acerto !== null ? (
-              <span className="tabular-nums">{a.melhor_acerto} acertos</span>
+              <span className="tabular-nums">
+                {a.melhor_acerto} {a.melhor_acerto === 1 ? 'acerto' : 'acertos'}
+              </span>
             ) : (
               <MoneyText centavos={a.saldo_centavos ?? 0} comSinal />
             )}
@@ -73,9 +92,17 @@ export function ApostaCard({ aposta: a, selecionando, selecionada, onSelecionar 
 
   if (selecionando) {
     return (
-      <label className={cn(classe, 'cursor-pointer hover:bg-accent')} style={{ borderLeftColor: a.modalidade_cor ?? undefined }}>
+      <label
+        className={cn(classe, 'cursor-pointer hover:bg-accent')}
+        style={{ borderLeftColor: a.modalidade_cor ?? undefined }}
+      >
         <span className="flex items-center gap-2 text-sm font-medium">
-          <Checkbox checked={selecionada} onCheckedChange={(v) => onSelecionar?.(v === true)} aria-label={`Selecionar ${titulo}`} className="size-5" />
+          <Checkbox
+            checked={selecionada}
+            onCheckedChange={(v) => onSelecionar?.(v === true)}
+            aria-label={`Selecionar ${titulo}`}
+            className="size-5"
+          />
           Selecionar
         </span>
         {conteudo}

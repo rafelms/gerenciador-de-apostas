@@ -167,6 +167,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"conferencias": {
+                  Row: {
+                    "acertos": number,"aposta_id": string,"aposta_jogo_id": string,"concurso_id": number,"conferido_em": string,"dezenas_acertadas": (number)[],"premios_por_faixa": NonNullable<Json>,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "acertos": number,"aposta_id": string,"aposta_jogo_id": string,"concurso_id": number,"conferido_em"?: string,"dezenas_acertadas": (number)[],"premios_por_faixa": NonNullable<Json>,"user_id": string
+                  }
+                  Update: {
+                    "acertos"?: number,"aposta_id"?: string,"aposta_jogo_id"?: string,"concurso_id"?: number,"conferido_em"?: string,"dezenas_acertadas"?: (number)[],"premios_por_faixa"?: NonNullable<Json>,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "conferencias_aposta_id_fkey"
+      columns: ["aposta_id"]
+isOneToOne: false
+      referencedRelation: "apostas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "conferencias_aposta_id_fkey"
+      columns: ["aposta_id"]
+isOneToOne: false
+      referencedRelation: "vw_apostas_resumo"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "conferencias_aposta_jogo_id_fkey"
+      columns: ["aposta_jogo_id"]
+isOneToOne: false
+      referencedRelation: "aposta_jogos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "conferencias_concurso_id_fkey"
+      columns: ["concurso_id"]
+isOneToOne: false
+      referencedRelation: "concursos"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"configuracoes": {
                   Row: {
                     "aliquota_ir_bps": number,"base_calculo_ir": string,"id": number,"limite_isencao_ir_centavos": number,"prazo_resgate_dias": number,"updated_at": string,"valor_rateio_api_eh": string
@@ -203,17 +241,37 @@ isOneToOne: false
                   ]
                 },"modalidades": {
                   Row: {
-                    "ativa": boolean,"base_aposta": number,"bolao_max_cotas": number | null,"bolao_min_cotas": number | null,"cor_hex": string | null,"faixas": NonNullable<Json>,"id": number,"max_marcadas": number,"min_marcadas": number,"nome": string,"qtd_sorteadas": number,"slug": string,"universo_max": number,"universo_min": number
+                    "ativa": boolean,"base_aposta": number,"bolao_max_cotas": number | null,"bolao_min_cotas": number | null,"cor_hex": string | null,"faixas": NonNullable<Json>,"id": number,"max_marcadas": number,"min_marcadas": number,"nome": string,"qtd_sorteadas": number,"slug": string,"teimosinha_concursos": (number)[] | null,"universo_max": number,"universo_min": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "ativa"?: boolean,"base_aposta": number,"bolao_max_cotas"?: number | null,"bolao_min_cotas"?: number | null,"cor_hex"?: string | null,"faixas": NonNullable<Json>,"id"?: number,"max_marcadas": number,"min_marcadas": number,"nome": string,"qtd_sorteadas": number,"slug": string,"universo_max": number,"universo_min": number
+                    "ativa"?: boolean,"base_aposta": number,"bolao_max_cotas"?: number | null,"bolao_min_cotas"?: number | null,"cor_hex"?: string | null,"faixas": NonNullable<Json>,"id"?: number,"max_marcadas": number,"min_marcadas": number,"nome": string,"qtd_sorteadas": number,"slug": string,"teimosinha_concursos"?: (number)[] | null,"universo_max": number,"universo_min": number
                   }
                   Update: {
-                    "ativa"?: boolean,"base_aposta"?: number,"bolao_max_cotas"?: number | null,"bolao_min_cotas"?: number | null,"cor_hex"?: string | null,"faixas"?: NonNullable<Json>,"id"?: number,"max_marcadas"?: number,"min_marcadas"?: number,"nome"?: string,"qtd_sorteadas"?: number,"slug"?: string,"universo_max"?: number,"universo_min"?: number
+                    "ativa"?: boolean,"base_aposta"?: number,"bolao_max_cotas"?: number | null,"bolao_min_cotas"?: number | null,"cor_hex"?: string | null,"faixas"?: NonNullable<Json>,"id"?: number,"max_marcadas"?: number,"min_marcadas"?: number,"nome"?: string,"qtd_sorteadas"?: number,"slug"?: string,"teimosinha_concursos"?: (number)[] | null,"universo_max"?: number,"universo_min"?: number
                   }
                   Relationships: [
                     
+                  ]
+                },"notificacoes": {
+                  Row: {
+                    "chave_dedup": string | null,"corpo": string | null,"created_at": string,"id": string,"lida_em": string | null,"link": string | null,"tipo": Database["public"]['Enums']["tipo_notificacao"],"titulo": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chave_dedup"?: string | null,"corpo"?: string | null,"created_at"?: string,"id"?: string,"lida_em"?: string | null,"link"?: string | null,"tipo": Database["public"]['Enums']["tipo_notificacao"],"titulo": string,"user_id": string
+                  }
+                  Update: {
+                    "chave_dedup"?: string | null,"corpo"?: string | null,"created_at"?: string,"id"?: string,"lida_em"?: string | null,"link"?: string | null,"tipo"?: Database["public"]['Enums']["tipo_notificacao"],"titulo"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notificacoes_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"participantes": {
                   Row: {
@@ -241,6 +299,64 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"premio_divisoes": {
+                  Row: {
+                    "liquido_centavos": number,"participante_id": string,"premio_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "liquido_centavos": number,"participante_id": string,"premio_id": string,"user_id": string
+                  }
+                  Update: {
+                    "liquido_centavos"?: number,"participante_id"?: string,"premio_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "premio_divisoes_participante_id_fkey"
+      columns: ["participante_id"]
+isOneToOne: false
+      referencedRelation: "participantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "premio_divisoes_premio_id_fkey"
+      columns: ["premio_id"]
+isOneToOne: false
+      referencedRelation: "premios"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"premios": {
+                  Row: {
+                    "aposta_id": string,"bruto_aposta_centavos": number,"bruto_usuario_centavos": number,"concurso_id": number,"created_at": string,"faixas_sem_valor": (number)[],"id": string,"ir_usuario_centavos": number,"liquido_usuario_centavos": number,"prazo_resgate": string,"regra_ir": NonNullable<Json>,"resgatado_em": string | null,"status": Database["public"]['Enums']["status_premio"],"updated_at": string,"user_id": string,"valor_informado_manual": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "aposta_id": string,"bruto_aposta_centavos": number,"bruto_usuario_centavos": number,"concurso_id": number,"created_at"?: string,"faixas_sem_valor"?: (number)[],"id"?: string,"ir_usuario_centavos": number,"liquido_usuario_centavos": number,"prazo_resgate": string,"regra_ir": NonNullable<Json>,"resgatado_em"?: string | null,"status"?: Database["public"]['Enums']["status_premio"],"updated_at"?: string,"user_id"?: string,"valor_informado_manual"?: boolean
+                  }
+                  Update: {
+                    "aposta_id"?: string,"bruto_aposta_centavos"?: number,"bruto_usuario_centavos"?: number,"concurso_id"?: number,"created_at"?: string,"faixas_sem_valor"?: (number)[],"id"?: string,"ir_usuario_centavos"?: number,"liquido_usuario_centavos"?: number,"prazo_resgate"?: string,"regra_ir"?: NonNullable<Json>,"resgatado_em"?: string | null,"status"?: Database["public"]['Enums']["status_premio"],"updated_at"?: string,"user_id"?: string,"valor_informado_manual"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "premios_aposta_id_fkey"
+      columns: ["aposta_id"]
+isOneToOne: false
+      referencedRelation: "apostas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "premios_aposta_id_fkey"
+      columns: ["aposta_id"]
+isOneToOne: false
+      referencedRelation: "vw_apostas_resumo"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "premios_concurso_id_fkey"
+      columns: ["concurso_id"]
+isOneToOne: false
+      referencedRelation: "concursos"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "ativo": boolean,"created_at": string,"id": string,"nome": string,"papel": Database["public"]['Enums']["papel_usuario"],"preferencias": NonNullable<Json>,"updated_at": string
@@ -255,12 +371,32 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"sync_logs": {
+                  Row: {
+                    "conferidos": number,"executado_em": string,"id": number,"inseridos": number,"mensagem": string | null,"modalidade_id": number | null,"origem": string,"status": string,"ultimo_concurso": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "conferidos"?: number,"executado_em"?: string,"id"?: number,"inseridos"?: number,"mensagem"?: string | null,"modalidade_id"?: number | null,"origem": string,"status": string,"ultimo_concurso"?: number | null
+                  }
+                  Update: {
+                    "conferidos"?: number,"executado_em"?: string,"id"?: number,"inseridos"?: number,"mensagem"?: string | null,"modalidade_id"?: number | null,"origem"?: string,"status"?: string,"ultimo_concurso"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sync_logs_modalidade_id_fkey"
+      columns: ["modalidade_id"]
+isOneToOne: false
+      referencedRelation: "modalidades"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
             "vw_apostas_resumo": {
                   Row: {
-                    "bolao_cotas_usuario": number | null,"bolao_numero_cota": number | null,"bolao_total_cotas": number | null,"comprovante_hash": string | null,"concurso_final": number | null,"concurso_inicial": number | null,"created_at": string | null,"data_aposta": string | null,"gasto_usuario_centavos": number | null,"id": string | null,"local_compra": string | null,"max_dezenas": number | null,"melhor_acerto": number | null,"modalidade_cor": string | null,"modalidade_id": number | null,"modalidade_nome": string | null,"modalidade_slug": string | null,"observacao": string | null,"origem": Database["public"]['Enums']["origem_aposta"] | null,"qtd_concursos": number | null,"qtd_jogos": number | null,"qtd_participantes": number | null,"recuperado_usuario_centavos": number | null,"saldo_centavos": number | null,"status": Database["public"]['Enums']["status_aposta"] | null,"tarifa_centavos": number | null,"tipo": Database["public"]['Enums']["tipo_aposta"] | null,"updated_at": string | null,"user_id": string | null,"valor_cota_centavos": number | null,"valor_pago_centavos": number | null
+                    "bolao_cotas_usuario": number | null,"bolao_numero_cota": number | null,"bolao_total_cotas": number | null,"comprovante_hash": string | null,"concurso_final": number | null,"concurso_inicial": number | null,"concursos_conferidos": number | null,"created_at": string | null,"data_aposta": string | null,"gasto_usuario_centavos": number | null,"id": string | null,"local_compra": string | null,"max_dezenas": number | null,"melhor_acerto": number | null,"modalidade_cor": string | null,"modalidade_id": number | null,"modalidade_nome": string | null,"modalidade_slug": string | null,"observacao": string | null,"origem": Database["public"]['Enums']["origem_aposta"] | null,"premio_a_resgatar": boolean | null,"premio_bruto_usuario_centavos": number | null,"premio_liquido_usuario_centavos": number | null,"premio_valor_pendente": boolean | null,"qtd_concursos": number | null,"qtd_jogos": number | null,"qtd_participantes": number | null,"qtd_premios": number | null,"recuperado_usuario_centavos": number | null,"saldo_centavos": number | null,"status": Database["public"]['Enums']["status_aposta"] | null,"tarifa_centavos": number | null,"tipo": Database["public"]['Enums']["tipo_aposta"] | null,"updated_at": string | null,"user_id": string | null,"valor_cota_centavos": number | null,"valor_pago_centavos": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -295,8 +431,17 @@ isOneToOne: false
               "ativo": boolean,"created_at": string,"email": string,"id": string,"nome": string,"papel": Database["public"]['Enums']["papel_usuario"],"ultimo_acesso": string
             }[]
                            },
+"fn_limpar_conferencia":
+{ Args: { "p_aposta_id": string }; Returns: undefined
+                           },
+"fn_marcar_resgatado":
+{ Args: { "p_premio_id": string,"p_resgatado": boolean }; Returns: undefined
+                           },
 "fn_preco_vigente":
 { Args: { "p_data": string,"p_modalidade_id": number }; Returns: number
+                           },
+"fn_processar_prazos":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "fn_registrar_chamada_admin":
 { Args: { "p_limite"?: number,"p_user_id": string }; Returns: boolean

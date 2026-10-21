@@ -9,7 +9,9 @@ const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../apps
 const limiteKb = Number(process.argv[2] ?? 250)
 
 const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8')
-const arquivos = [...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1])
+const arquivos = [...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.(?:js|css))"/g)].map(
+  (m) => m[1],
+)
 
 let js = 0
 let css = 0

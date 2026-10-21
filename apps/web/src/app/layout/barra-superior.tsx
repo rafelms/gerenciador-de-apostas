@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/auth/auth-provider'
+import { useNotificacoes, useNotificacoesAoVivo } from '@/features/notificacoes/use-notificacoes'
 
 function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/)
@@ -23,6 +24,8 @@ function iniciais(nome: string) {
 export function BarraSuperior() {
   const { perfil, sair } = useAuth()
   const navigate = useNavigate()
+  const { naoLidas } = useNotificacoes()
+  useNotificacoesAoVivo()
 
   return (
     <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -32,9 +35,24 @@ export function BarraSuperior() {
         </Link>
         {/* Seletor de período do dashboard entra aqui na Fase 4 (seção 12.5). */}
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/notificacoes" aria-label="Notificações">
+        <Button variant="ghost" size="icon" asChild className="relative">
+          <Link
+            to="/notificacoes"
+            aria-label={
+              naoLidas > 0
+                ? `Notificações, ${naoLidas} não ${naoLidas === 1 ? 'lida' : 'lidas'}`
+                : 'Notificações'
+            }
+          >
             <Bell aria-hidden="true" />
+            {naoLidas > 0 && (
+              <span
+                className="absolute top-1 right-1 flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs leading-5 font-semibold text-white tabular-nums"
+                aria-hidden="true"
+              >
+                {naoLidas > 9 ? '9+' : naoLidas}
+              </span>
+            )}
           </Link>
         </Button>
         <DropdownMenu>

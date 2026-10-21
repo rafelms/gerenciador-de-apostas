@@ -17,5 +17,11 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // Testes unitários não falam com o Supabase, mas importam o cliente (src/lib/env.ts
+    // exige as variáveis). Valores fictícios: o CI não tem .env.local.
+    env: {
+      VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
+      VITE_SUPABASE_PUBLISHABLE_KEY: 'chave-publica-ficticia-para-testes',
+    },
   },
 })

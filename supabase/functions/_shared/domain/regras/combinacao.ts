@@ -1,7 +1,13 @@
 // ARQUIVO GERADO por `pnpm sync:shared` — edite em packages/shared/src.
 import { combinacao, combinacoesPremiadas } from '../combinatoria.ts'
 import type { Centavos } from '../dinheiro.ts'
-import type { Faixa, RegraModalidade, ResultadoConferencia, SlugModalidade, Sorteio } from './tipos.ts'
+import type {
+  Faixa,
+  RegraModalidade,
+  ResultadoConferencia,
+  SlugModalidade,
+  Sorteio,
+} from './tipos.ts'
 
 interface DefinicaoCombinacao {
   slug: SlugModalidade
@@ -13,11 +19,15 @@ interface DefinicaoCombinacao {
   minMarcadas: number
   maxMarcadas: number
   faixas: Faixa[]
+  teimosinhaConcursos?: number[]
+  espelho?: boolean
 }
 
 /**
- * Modalidades "de combinação" (Mega-Sena, Lotofácil, Quina): marca n dezenas,
+ * Modalidades "de combinação" (Mega-Sena, Lotofácil, Quina, Lotomania): marca n dezenas,
  * o jogo vale C(n, p) apostas simples e cada uma é conferida contra o sorteio.
+ * Na Lotomania n = p = 50: cada jogo é uma única aposta e premia só a faixa igual
+ * aos acertos — inclusive 0 acertos, pois C(0, 0) × C(50, 50) = 1.
  */
 export function criarRegraCombinacao(def: DefinicaoCombinacao): RegraModalidade {
   return {
@@ -27,7 +37,9 @@ export function criarRegraCombinacao(def: DefinicaoCombinacao): RegraModalidade 
       const erros: string[] = []
       if (dezenas.length < def.minMarcadas || dezenas.length > def.maxMarcadas) {
         erros.push(
-          `${def.nome} aceita de ${def.minMarcadas} a ${def.maxMarcadas} dezenas; encontradas ${dezenas.length}`,
+          def.minMarcadas === def.maxMarcadas
+            ? `${def.nome} exige ${def.minMarcadas} dezenas; encontradas ${dezenas.length}`
+            : `${def.nome} aceita de ${def.minMarcadas} a ${def.maxMarcadas} dezenas; encontradas ${dezenas.length}`,
         )
       }
       const vistas = new Set<number>()
@@ -48,7 +60,9 @@ export function criarRegraCombinacao(def: DefinicaoCombinacao): RegraModalidade 
 
     conferir(dezenasJogo: number[], sorteio: Sorteio): ResultadoConferencia {
       const sorteadas = new Set(sorteio.dezenas)
-      const dezenasAcertadas = [...new Set(dezenasJogo)].filter((d) => sorteadas.has(d)).sort((a, b) => a - b)
+      const dezenasAcertadas = [...new Set(dezenasJogo)]
+        .filter((d) => sorteadas.has(d))
+        .sort((a, b) => a - b)
       const n = new Set(dezenasJogo).size
       const k = dezenasAcertadas.length
 

@@ -17,9 +17,15 @@ interface VolanteNumericoProps {
 /**
  * Volante: grade de dezenas clicáveis (seção 12.4).
  * 5 colunas no celular (alvos ≥ 44px a 360px) e 10 a partir de `sm`.
- * Mostra o contador "7/6–20" e o custo do jogo em tempo real.
+ * Mostra o contador "7/6–20" (ou "50/50" quando a quantidade é fixa) e o custo do jogo em tempo real.
  */
-export function VolanteNumerico({ regra, selecionadas, onChange, precoSimples, rotulo = 'Volante' }: VolanteNumericoProps) {
+export function VolanteNumerico({
+  regra,
+  selecionadas,
+  onChange,
+  precoSimples,
+  rotulo = 'Volante',
+}: VolanteNumericoProps) {
   const marcadas = new Set(selecionadas)
   const qtd = marcadas.size
   const noLimite = qtd >= regra.maxMarcadas
@@ -34,14 +40,24 @@ export function VolanteNumerico({ regra, selecionadas, onChange, precoSimples, r
     }
   }
 
-  const numeros = Array.from({ length: regra.universoMax - regra.universoMin + 1 }, (_, i) => regra.universoMin + i)
+  const numeros = Array.from(
+    { length: regra.universoMax - regra.universoMin + 1 },
+    (_, i) => regra.universoMin + i,
+  )
+  // Universo que começa no 00 (Lotomania): o volante da CAIXA mostra 01…99 e o 00 por último,
+  // o que forma as linhas 01–10, 11–20 … 91–00 a partir de 10 colunas.
+  if (regra.universoMin === 0) numeros.push(numeros.shift()!)
+  const faixaQtd =
+    regra.minMarcadas === regra.maxMarcadas
+      ? `${regra.minMarcadas}`
+      : `${regra.minMarcadas}–${regra.maxMarcadas}`
 
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm" aria-live="polite">
           <span className={cn('font-semibold tabular-nums', !valido && qtd > 0 && 'text-alerta')}>
-            {qtd}/{regra.minMarcadas}–{regra.maxMarcadas}
+            {qtd}/{faixaQtd}
           </span>{' '}
           <span className="text-muted-foreground">dezenas</span>
           {custo !== null && (
@@ -51,7 +67,13 @@ export function VolanteNumerico({ regra, selecionadas, onChange, precoSimples, r
             </>
           )}
         </p>
-        <Button type="button" variant="ghost" size="sm" onClick={() => onChange([])} disabled={qtd === 0}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onChange([])}
+          disabled={qtd === 0}
+        >
           <Eraser aria-hidden="true" /> Limpar
         </Button>
       </div>

@@ -43,6 +43,14 @@ export function filtrosParaUrl(f: FiltrosApostas): URLSearchParams {
   return p
 }
 
-export const rotulosTipo: Record<TipoAposta, string> = { simples: 'Simples', bolao: 'Bolão', teimosinha: 'Teimosinha' }
-export const rotulosOrigem: Record<OrigemAposta, string> = { manual: 'Manual', excel: 'Excel', pdf: 'PDF' }
+export const rotulosTipo: Record<TipoAposta, string> = {
+  simples: 'Simples',
+  bolao: 'Bolão',
+  teimosinha: 'Teimosinha',
+}
+export const rotulosOrigem: Record<OrigemAposta, string> = {
+  manual: 'Manual',
+  excel: 'Excel',
+  pdf: 'PDF',
+}
 export { ORIGENS, STATUS, TIPOS }

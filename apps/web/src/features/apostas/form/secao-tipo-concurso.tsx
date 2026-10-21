@@ -19,7 +19,13 @@ const tipos = [
   { valor: 'teimosinha', rotulo: 'Teimosinha', descricao: 'Vários concursos', icone: Repeat },
 ] as const
 
-export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalidade | undefined; edicao: boolean }) {
+export function SecaoTipoConcurso({
+  modalidade,
+  edicao,
+}: {
+  modalidade: Modalidade | undefined
+  edicao: boolean
+}) {
   const { watch, setValue, register, getValues, formState } = useFormContext<FormAposta>()
   const tipo = watch('tipo')
   const erros = formState.errors
@@ -33,12 +39,20 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
 
   // Preenche o próximo concurso automaticamente numa aposta nova.
   useEffect(() => {
-    if (!edicao && sugestao && !getValues('concursoInicial')) setValue('concursoInicial', String(sugestao))
+    if (!edicao && sugestao && !getValues('concursoInicial'))
+      setValue('concursoInicial', String(sugestao))
   }, [edicao, sugestao, getValues, setValue])
+
+  // Lotomania: a teimosinha só vale para quantidades fixas (2, 3, 4, 6, 8, 9 ou 12).
+  const qtdsFixas = modalidade?.regra.teimosinhaConcursos ?? null
+  const qtdConcursos = watch('qtdConcursos')
 
   function escolherTipo(novo: FormAposta['tipo']) {
     setValue('tipo', novo)
-    if (novo === 'teimosinha' && Number(getValues('qtdConcursos')) < 2) setValue('qtdConcursos', '2')
+    const atual = Number(getValues('qtdConcursos'))
+    if (novo === 'teimosinha' && qtdsFixas && !qtdsFixas.includes(atual))
+      setValue('qtdConcursos', String(qtdsFixas[0]))
+    else if (novo === 'teimosinha' && atual < 2) setValue('qtdConcursos', '2')
     if (novo !== 'teimosinha') setValue('qtdConcursos', '1')
   }
 
@@ -56,12 +70,18 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
               onClick={() => escolherTipo(valor)}
               className={cn(
                 'flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border p-2 text-center transition-colors duration-150',
-                tipo === valor ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-accent',
+                tipo === valor
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-accent',
               )}
             >
               <Icone className="size-5" aria-hidden="true" />
               <span className="text-sm font-semibold">{rotulo}</span>
-              <span className={cn('text-xs', tipo === valor ? 'opacity-90' : 'text-muted-foreground')}>{descricao}</span>
+              <span
+                className={cn('text-xs', tipo === valor ? 'opacity-90' : 'text-muted-foreground')}
+              >
+                {descricao}
+              </span>
             </button>
           ))}
         </div>
@@ -77,7 +97,13 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
                 Próximo: {sugestao}
                 {ultimo.data.data_proximo && ` (sorteio ${formatarData(ultimo.data.data_proximo)})`}
                 {watch('concursoInicial') !== String(sugestao) && (
-                  <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => setValue('concursoInicial', String(sugestao))}>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0"
+                    onClick={() => setValue('concursoInicial', String(sugestao))}
+                  >
                     Usar
                   </Button>
                 )}
@@ -88,12 +114,61 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
           <Input inputMode="numeric" autoComplete="off" {...register('concursoInicial')} />
         </Campo>
 
-        {tipo === 'teimosinha' && (
-          <Campo label="Quantidade de concursos" erro={erros.qtdConcursos?.message} ajuda="De 2 a 24 concursos seguidos.">
-            <Input type="number" inputMode="numeric" min={2} max={24} {...register('qtdConcursos')} />
+        {tipo === 'teimosinha' && !qtdsFixas && (
+          <Campo
+            label="Quantidade de concursos"
+            erro={erros.qtdConcursos?.message}
+            ajuda="De 2 a 24 concursos seguidos."
+          >
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={2}
+              max={24}
+              {...register('qtdConcursos')}
+            />
           </Campo>
         )}
       </div>
+
+      {tipo === 'teimosinha' && qtdsFixas && (
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium">Quantidade de concursos</legend>
+          <div
+            role="radiogroup"
+            aria-label="Quantidade de concursos"
+            className="flex flex-wrap gap-2"
+          >
+            {qtdsFixas.map((q) => (
+              <button
+                key={q}
+                type="button"
+                role="radio"
+                aria-checked={qtdConcursos === String(q)}
+                onClick={() =>
+                  setValue('qtdConcursos', String(q), { shouldValidate: formState.isSubmitted })
+                }
+                className={cn(
+                  'min-h-11 min-w-11 rounded-full border px-3 text-sm font-semibold tabular-nums transition-colors duration-150',
+                  qtdConcursos === String(q)
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'bg-card hover:bg-accent',
+                )}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            A {modalidade?.nome} aceita só estas quantidades de concursos seguidos.
+          </p>
+          {erros.qtdConcursos?.message && (
+            <p role="alert" className="mt-1.5 text-sm font-medium text-destructive">
+              {erros.qtdConcursos.message}
+            </p>
+          )}
+        </fieldset>
+      )}
     </div>
   )
 }

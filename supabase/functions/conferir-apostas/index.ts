@@ -1,0 +1,53 @@
+// Edge Function conferir-apostas (seção 10.2)
+//   service role: { concurso_id } → confere todas as apostas do concurso
+//   usuário:      { aposta_id }   → confere a PRÓPRIA aposta nos concursos já sorteados
+//                                   (depois de criar/editar a aposta ou informar prêmio à mão)
+// Idempotente: pode ser chamada quantas vezes for preciso.
+import { z } from 'zod'
+
+import { obterChamador, segredoConfere, tokenDoHeader } from '../_shared/auth.ts'
+import { conferirAposta, conferirConcurso } from '../_shared/conferir.ts'
+import { responderPreflight } from '../_shared/cors.ts'
+import { erro, json } from '../_shared/respostas.ts'
+import { supabaseAdmin } from '../_shared/supabase-admin.ts'
+
+const porConcurso = z.object({ concurso_id: z.number().int().positive() })
+const porAposta = z.object({ aposta_id: z.uuid() })
+
+Deno.serve(async (req) => {
+  const preflight = responderPreflight(req)
+  if (preflight) return preflight
+  if (req.method !== 'POST') return erro(req, 405, 'Método não permitido.')
+
+  let corpo: unknown
+  try {
+    corpo = await req.json()
+  } catch {
+    return erro(req, 400, 'Dados inválidos.')
+  }
+
+  try {
+    if (segredoConfere(tokenDoHeader(req), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))) {
+      const entrada = porConcurso.safeParse(corpo)
+      if (!entrada.success) return erro(req, 400, 'Dados inválidos.')
+      return json(req, await conferirConcurso(supabaseAdmin, entrada.data.concurso_id))
+    }
+
+    const chamador = await obterChamador(req)
+    if (!chamador?.ativo) return erro(req, 401, 'Sessão inválida.')
+    const entrada = porAposta.safeParse(corpo)
+    if (!entrada.success) return erro(req, 400, 'Dados inválidos.')
+
+    const { data: aposta } = await supabaseAdmin
+      .from('apostas')
+      .select('user_id')
+      .eq('id', entrada.data.aposta_id)
+      .maybeSingle()
+    // Mesma resposta para "não existe" e "é de outro usuário": não revela apostas alheias.
+    if (!aposta || aposta.user_id !== chamador.id) return erro(req, 404, 'Aposta não encontrada.')
+    return json(req, await conferirAposta(supabaseAdmin, entrada.data.aposta_id))
+  } catch (e) {
+    console.error('conferir-apostas:', e instanceof Error ? e.message : e)
+    return erro(req, 500, 'Não foi possível conferir agora.')
+  }
+})

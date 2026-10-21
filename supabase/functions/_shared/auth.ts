@@ -43,3 +43,21 @@ export async function obterChamador(req: Request): Promise<Chamador | null> {
 export function ehAdminComMfa(c: Chamador | null): c is Chamador {
   return !!c && c.papel === 'admin' && c.ativo && c.aal === 'aal2'
 }
+
+/** Compara segredos em tempo constante (CRON_SECRET, service role) — seção 8.6. */
+export function segredoConfere(
+  recebido: string | null | undefined,
+  esperado: string | null | undefined,
+): boolean {
+  if (!recebido || !esperado) return false
+  const a = new TextEncoder().encode(recebido)
+  const b = new TextEncoder().encode(esperado)
+  let diferenca = a.length ^ b.length
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diferenca |= (a[i] ?? 0) ^ (b[i] ?? 0)
+  return diferenca === 0
+}
+
+/** Token do header Authorization (sem o "Bearer "). */
+export function tokenDoHeader(req: Request): string | null {
+  return req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? null
+}

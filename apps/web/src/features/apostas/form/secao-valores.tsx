@@ -16,8 +16,9 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
   const calculado = valorCalculado(form, modalidade)
   const listaAvisos = avisos(form, modalidade)
 
-  // Enquanto o usuário não digita o valor pago, mostramos o calculado.
-  const registroPago = register('valorPago', {
+  // Enquanto o usuário não digita o valor pago, mostramos o calculado (campo controlado).
+  // O RHF recebe um ref só de foco: com o <input> real, ele regravava '' no DOM ao montar a etapa.
+  const { ref: refPago, ...registroPago } = register('valorPago', {
     onChange: () => setValue('valorPagoManual', true),
   })
 
@@ -41,7 +42,11 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
           >
             <InputDinheiro {...register('tarifa')} />
           </Campo>
-          <Campo label="Nº da cota (opcional)" erro={erros.numeroCota?.message} ajuda='"Cota: 35/38" → 35'>
+          <Campo
+            label="Nº da cota (opcional)"
+            erro={erros.numeroCota?.message}
+            ajuda='"Cota: 35/38" → 35'
+          >
             <Input inputMode="numeric" autoComplete="off" {...register('numeroCota')} />
           </Campo>
         </div>
@@ -52,10 +57,14 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
           <span className="text-sm text-muted-foreground">
             {form.tipo === 'bolao' ? 'Cotas × (cota + tarifa)' : 'Custo calculado'}
           </span>
-          <span className="text-lg font-bold tabular-nums">{calculado !== null ? formatarBRL(calculado) : '—'}</span>
+          <span className="text-lg font-bold tabular-nums">
+            {calculado !== null ? formatarBRL(calculado) : '—'}
+          </span>
         </div>
         {form.tipo === 'teimosinha' && calculado !== null && (
-          <p className="text-xs text-muted-foreground">Já multiplicado por {form.qtdConcursos} concursos.</p>
+          <p className="text-xs text-muted-foreground">
+            Já multiplicado por {form.qtdConcursos} concursos.
+          </p>
         )}
       </div>
 
@@ -83,14 +92,24 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
       >
         <InputDinheiro
           {...registroPago}
-          value={form.valorPagoManual ? form.valorPago : calculado !== null ? formatarBRL(calculado).replace('R$ ', '') : ''}
+          ref={(el) => refPago(el && { focus: () => el.focus() })}
+          value={
+            form.valorPagoManual
+              ? form.valorPago
+              : calculado !== null
+                ? formatarBRL(calculado).replace('R$ ', '')
+                : ''
+          }
         />
       </Campo>
 
       {listaAvisos.length > 0 && (
         <ul className="grid gap-2" aria-live="polite">
           {listaAvisos.map((a) => (
-            <li key={a} className="flex gap-2 rounded-lg border border-alerta/40 bg-alerta/10 p-3 text-sm">
+            <li
+              key={a}
+              className="flex gap-2 rounded-lg border border-alerta/40 bg-alerta/10 p-3 text-sm"
+            >
               <TriangleAlert className="size-4 shrink-0 text-alerta" aria-hidden="true" />
               {a}
             </li>

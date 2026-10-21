@@ -39,7 +39,11 @@ export function SecaoModalidade({ bloqueada }: { bloqueada: boolean }) {
           />
         ))}
       </div>
-      {bloqueada && <p className="text-sm text-muted-foreground">A modalidade não muda depois que a aposta foi criada.</p>}
+      {bloqueada && (
+        <p className="text-sm text-muted-foreground">
+          A modalidade não muda depois que a aposta foi criada.
+        </p>
+      )}
       {erro && (
         <p role="alert" className="text-sm font-medium text-destructive">
           {erro}

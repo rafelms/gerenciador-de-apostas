@@ -1,6 +1,6 @@
 import { formatarBRL } from '@shared/dinheiro.ts'
-import { parseDezenas } from '@shared/regras/index.ts'
-import { ClipboardPaste, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
+import { jogoEspelho, parseDezenas } from '@shared/regras/index.ts'
+import { ClipboardPaste, Copy, FlipHorizontal2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useFieldArray, useFormContext } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -23,18 +23,29 @@ import { precoVigente, type Modalidade } from '@/features/modalidades/use-modali
 import { cn } from '@/lib/utils'
 import type { FormAposta } from './estado'
 
-function DialogColar({ modalidade, onColar }: { modalidade: Modalidade; onColar: (jogos: number[][]) => void }) {
+function DialogColar({
+  modalidade,
+  onColar,
+}: {
+  modalidade: Modalidade
+  onColar: (jogos: number[][]) => void
+}) {
   const [aberto, setAberto] = useState(false)
   const [texto, setTexto] = useState('')
   const [erros, setErros] = useState<string[]>([])
 
   function confirmar() {
-    const linhas = texto.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+    const linhas = texto
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
     const jogos: number[][] = []
     const problemas: string[] = []
     linhas.forEach((linha, i) => {
       const dezenas = parseDezenas(linha)
-      const errosJogo = dezenas.some(Number.isNaN) ? ['contém algo que não é dezena'] : modalidade.regra.validarJogo(dezenas)
+      const errosJogo = dezenas.some(Number.isNaN)
+        ? ['contém algo que não é dezena']
+        : modalidade.regra.validarJogo(dezenas)
       if (errosJogo.length) problemas.push(`Linha ${i + 1}: ${errosJogo[0]}`)
       else jogos.push(dezenas)
     })
@@ -57,7 +68,9 @@ function DialogColar({ modalidade, onColar }: { modalidade: Modalidade; onColar:
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Colar dezenas</DialogTitle>
-          <DialogDescription>Um jogo por linha. Separe as dezenas com espaço, vírgula, hífen ou |.</DialogDescription>
+          <DialogDescription>
+            Um jogo por linha. Separe as dezenas com espaço, vírgula, hífen ou |.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
           <Label htmlFor="colar-dezenas">Jogos</Label>
@@ -71,7 +84,11 @@ function DialogColar({ modalidade, onColar }: { modalidade: Modalidade; onColar:
             aria-describedby={erros.length ? 'colar-erros' : undefined}
           />
           {erros.length > 0 && (
-            <ul id="colar-erros" role="alert" className="grid gap-1 text-sm font-medium text-destructive">
+            <ul
+              id="colar-erros"
+              role="alert"
+              className="grid gap-1 text-sm font-medium text-destructive"
+            >
               {erros.map((e) => (
                 <li key={e}>{e}</li>
               ))}
@@ -96,7 +113,9 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
   const [ativo, setAtivo] = useState(0)
 
   if (!modalidade) {
-    return <p className="text-sm text-muted-foreground">Escolha a modalidade para marcar os jogos.</p>
+    return (
+      <p className="text-sm text-muted-foreground">Escolha a modalidade para marcar os jogos.</p>
+    )
   }
 
   const preco = precoVigente(modalidade, dataAposta)
@@ -122,11 +141,16 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
           const erro = formState.errors.jogos?.[i]?.message
           const editando = i === indiceAtivo
           const custo =
-            preco && dezenas.length >= modalidade.regra.minMarcadas && dezenas.length <= modalidade.regra.maxMarcadas
+            preco &&
+            dezenas.length >= modalidade.regra.minMarcadas &&
+            dezenas.length <= modalidade.regra.maxMarcadas
               ? modalidade.regra.custoJogo(dezenas.length, preco)
               : null
           return (
-            <li key={field.id} className={cn('rounded-xl border bg-card p-3', editando && 'border-primary')}>
+            <li
+              key={field.id}
+              className={cn('rounded-xl border bg-card p-3', editando && 'border-primary')}
+            >
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="font-semibold">Jogo {i + 1}</span>
                 <span className="text-sm text-muted-foreground tabular-nums">
@@ -134,7 +158,13 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
                 </span>
                 <span className="flex-1" />
                 {!editando && (
-                  <Button type="button" variant="ghost" size="icon" onClick={() => setAtivo(i)} aria-label={`Editar jogo ${i + 1}`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setAtivo(i)}
+                    aria-label={`Editar jogo ${i + 1}`}
+                  >
                     <Pencil aria-hidden="true" />
                   </Button>
                 )}
@@ -150,6 +180,23 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
                 >
                   <Copy aria-hidden="true" />
                 </Button>
+                {modalidade.regra.espelho && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={dezenas.length !== modalidade.regra.minMarcadas}
+                    onClick={() => {
+                      insert(i + 1, { dezenas: jogoEspelho(modalidade.regra, dezenas)! })
+                      setAtivo(i + 1)
+                      toast.success(`Aposta-Espelho do jogo ${i + 1} adicionada.`)
+                    }}
+                    aria-label={`Aposta-Espelho do jogo ${i + 1}`}
+                    title="Aposta-Espelho: os outros números do volante"
+                  >
+                    <FlipHorizontal2 aria-hidden="true" />
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -168,12 +215,19 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
                 <VolanteNumerico
                   regra={modalidade.regra}
                   selecionadas={dezenas}
-                  onChange={(novas) => setValue(`jogos.${i}.dezenas`, novas, { shouldValidate: formState.isSubmitted })}
+                  onChange={(novas) =>
+                    setValue(`jogos.${i}.dezenas`, novas, { shouldValidate: formState.isSubmitted })
+                  }
                   precoSimples={preco}
                   rotulo={`Volante do jogo ${i + 1}`}
                 />
               ) : dezenas.length > 0 ? (
-                <button type="button" className="w-full text-left" onClick={() => setAtivo(i)} aria-label={`Editar jogo ${i + 1}`}>
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => setAtivo(i)}
+                  aria-label={`Editar jogo ${i + 1}`}
+                >
                   <ListaDezenas dezenas={dezenas} />
                 </button>
               ) : (

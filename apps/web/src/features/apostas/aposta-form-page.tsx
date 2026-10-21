@@ -14,8 +14,15 @@ import { useModalidades } from '@/features/modalidades/use-modalidades'
 import { chaves } from '@/lib/query-keys'
 import { useDesktop } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
+import { conferirApostaAgora } from '@/features/conferencia/api'
 import { carregarAposta, salvarAposta } from './api'
-import { apostaParaForm, criarResolver, paraApostaInput, valoresIniciais, type FormAposta } from './form/estado'
+import {
+  apostaParaForm,
+  criarResolver,
+  paraApostaInput,
+  valoresIniciais,
+  type FormAposta,
+} from './form/estado'
 import { SecaoDetalhes } from './form/secao-detalhes'
 import { SecaoJogos } from './form/secao-jogos'
 import { SecaoModalidade } from './form/secao-modalidade'
@@ -26,8 +33,14 @@ const etapas: { titulo: string; campos: FieldPath<FormAposta>[] }[] = [
   { titulo: 'Modalidade', campos: ['modalidadeSlug'] },
   { titulo: 'Tipo e concurso', campos: ['tipo', 'concursoInicial', 'qtdConcursos'] },
   { titulo: 'Jogos', campos: ['jogos'] },
-  { titulo: 'Valores', campos: ['totalCotas', 'cotasUsuario', 'numeroCota', 'valorCota', 'tarifa', 'valorPago'] },
-  { titulo: 'Divisão e detalhes', campos: ['participantes', 'dataAposta', 'localCompra', 'observacao'] },
+  {
+    titulo: 'Valores',
+    campos: ['totalCotas', 'cotasUsuario', 'numeroCota', 'valorCota', 'tarifa', 'valorPago'],
+  },
+  {
+    titulo: 'Divisão e detalhes',
+    campos: ['participantes', 'dataAposta', 'localCompra', 'observacao'],
+  },
 ]
 
 function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormAposta }) {
@@ -37,7 +50,10 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
   const { data: modalidades } = useModalidades()
   const [etapa, setEtapa] = useState(0)
 
-  const obterModalidade = useMemo(() => (slug: string) => modalidades?.find((m) => m.slug === slug), [modalidades])
+  const obterModalidade = useMemo(
+    () => (slug: string) => modalidades?.find((m) => m.slug === slug),
+    [modalidades],
+  )
   const form = useForm<FormAposta>({
     defaultValues: inicial,
     resolver: criarResolver(obterModalidade),
@@ -48,7 +64,13 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
   const edicao = !!id
 
   const salvar = useMutation({
-    mutationFn: (valores: FormAposta) => salvarAposta(paraApostaInput(valores, modalidade), id),
+    mutationFn: async (valores: FormAposta) => {
+      const salvo = await salvarAposta(paraApostaInput(valores, modalidade), id)
+      // Se o concurso já foi sorteado, a aposta sai conferida (editar refaz a conferência).
+      // Falhar aqui não perde a aposta: a próxima sincronização confere as pendentes.
+      await conferirApostaAgora(salvo).catch(() => undefined)
+      return salvo
+    },
     onSuccess: (novoId) => {
       void queryClient.invalidateQueries({ queryKey: chaves.apostas })
       toast.success(edicao ? 'Aposta atualizada.' : 'Aposta registrada.')
@@ -83,7 +105,11 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit((v) => salvar.mutate(v), aoErrar)} noValidate className="grid gap-4">
+      <form
+        onSubmit={form.handleSubmit((v) => salvar.mutate(v), aoErrar)}
+        noValidate
+        className="grid gap-4"
+      >
         {desktop ? (
           etapas.map((e, i) => (
             <Card key={e.titulo}>
@@ -104,7 +130,13 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
               </p>
               <div className="flex gap-1" aria-hidden="true">
                 {etapas.map((e, i) => (
-                  <span key={e.titulo} className={cn('h-1.5 flex-1 rounded-full', i <= etapa ? 'bg-primary' : 'bg-muted')} />
+                  <span
+                    key={e.titulo}
+                    className={cn(
+                      'h-1.5 flex-1 rounded-full',
+                      i <= etapa ? 'bg-primary' : 'bg-muted',
+                    )}
+                  />
                 ))}
               </div>
             </div>
@@ -121,13 +153,19 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
             </Button>
           )}
           <span className="flex-1" />
+          {/* Keys distintas: se o React reaproveitar o <button> e trocar o type para "submit"
+              durante o clique em "Próximo", o navegador envia o formulário na última etapa. */}
           {!desktop && !ultima ? (
-            <Button type="button" onClick={() => void avancar()}>
+            <Button key="proximo" type="button" onClick={() => void avancar()}>
               Próximo <ArrowRight aria-hidden="true" />
             </Button>
           ) : (
-            <Button type="submit" disabled={salvar.isPending} size="lg">
-              {salvar.isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Save aria-hidden="true" />}
+            <Button key="enviar" type="submit" disabled={salvar.isPending} size="lg">
+              {salvar.isPending ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <Save aria-hidden="true" />
+              )}
               {edicao ? 'Salvar alterações' : 'Registrar aposta'}
             </Button>
           )}
@@ -173,7 +211,10 @@ export function ApostaFormPage() {
           icone={RefreshCw}
           titulo="Não foi possível carregar"
           acao={
-            <Button variant="outline" onClick={() => void Promise.all([modalidades.refetch(), aposta.refetch()])}>
+            <Button
+              variant="outline"
+              onClick={() => void Promise.all([modalidades.refetch(), aposta.refetch()])}
+            >
               Tentar de novo
             </Button>
           }
@@ -191,7 +232,11 @@ export function ApostaFormPage() {
         />
       )}
       {!carregando && !erro && (!id || aposta.data) && (
-        <Formulario key={id ?? 'nova'} id={id} inicial={aposta.data ? apostaParaForm(aposta.data) : valoresIniciais()} />
+        <Formulario
+          key={id ?? 'nova'}
+          id={id}
+          inicial={aposta.data ? apostaParaForm(aposta.data) : valoresIniciais()}
+        />
       )}
     </>
   )

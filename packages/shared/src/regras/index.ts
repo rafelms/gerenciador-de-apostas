@@ -1,13 +1,21 @@
 import { lotofacil } from './lotofacil.ts'
+import { lotomania } from './lotomania.ts'
 import { megasena } from './megasena.ts'
 import { quina } from './quina.ts'
 import type { RegraModalidade, SlugModalidade } from './tipos.ts'
 
 export type * from './tipos.ts'
 
-export const regras: Record<SlugModalidade, RegraModalidade> = { megasena, lotofacil, quina }
+export const regras: Record<SlugModalidade, RegraModalidade> = {
+  megasena,
+  lotofacil,
+  quina,
+  lotomania,
+}
 
 export const SLUGS_MVP: SlugModalidade[] = ['megasena', 'lotofacil', 'quina']
+/** Todas as modalidades com regra implementada (MVP + Lotomania, antecipada da fase 6). */
+export const SLUGS_SUPORTADOS: SlugModalidade[] = [...SLUGS_MVP, 'lotomania']
 
 export function ehSlugSuportado(slug: string): slug is SlugModalidade {
   return slug in regras
@@ -43,4 +51,21 @@ export function parseDezenas(texto: string): number[] {
 
 export function ordenarDezenas(dezenas: number[]): number[] {
   return [...dezenas].sort((a, b) => a - b)
+}
+
+/**
+ * Aposta-Espelho: as dezenas do universo que NÃO estão no jogo (Lotomania).
+ * Só faz sentido em modalidades com `espelho`; nas demais devolve null.
+ */
+export function jogoEspelho(regra: RegraModalidade, dezenas: number[]): number[] | null {
+  if (!regra.espelho) return null
+  const marcadas = new Set(dezenas)
+  const espelho: number[] = []
+  for (let d = regra.universoMin; d <= regra.universoMax; d++) if (!marcadas.has(d)) espelho.push(d)
+  return espelho
+}
+
+/** Quantidades de concursos aceitas na teimosinha desta modalidade. */
+export function concursosTeimosinha(regra: RegraModalidade): number[] {
+  return regra.teimosinhaConcursos ?? Array.from({ length: 23 }, (_, i) => i + 2)
 }

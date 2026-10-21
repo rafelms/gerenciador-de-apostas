@@ -1,7 +1,7 @@
 // ARQUIVO GERADO por `pnpm sync:shared` — edite em packages/shared/src.
 import type { Centavos } from '../dinheiro.ts'
 
-export type SlugModalidade = 'megasena' | 'lotofacil' | 'quina'
+export type SlugModalidade = 'megasena' | 'lotofacil' | 'quina' | 'lotomania'
 
 export interface Faixa {
   acertos: number
@@ -37,6 +37,16 @@ export interface RegraModalidade {
   minMarcadas: number
   maxMarcadas: number
   faixas: Faixa[]
+  /**
+   * Quantidades de concursos aceitas na teimosinha. Ausente = qualquer valor de 2 a 24.
+   * Ex.: Lotomania só aceita 2, 3, 4, 6, 8, 9 ou 12.
+   */
+  teimosinhaConcursos?: number[]
+  /**
+   * Aceita Aposta-Espelho: um 2º jogo com as dezenas NÃO marcadas no original
+   * (Lotomania: as outras 50 das 100).
+   */
+  espelho?: boolean
   /** Devolve a lista de erros (vazia = jogo válido). */
   validarJogo(dezenas: number[]): string[]
   /** precoSimples × C(n, p) */

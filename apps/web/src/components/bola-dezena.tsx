@@ -23,7 +23,12 @@ interface BolaDezenaProps {
 }
 
 /** Dezena como bolinha (seção 12.4). O estado também vai no texto acessível, não só na cor. */
-export function BolaDezena({ numero, estado = 'marcada', tamanho = 'md', className }: BolaDezenaProps) {
+export function BolaDezena({
+  numero,
+  estado = 'marcada',
+  tamanho = 'md',
+  className,
+}: BolaDezenaProps) {
   const texto = numero.toString().padStart(2, '0')
   const sufixo = rotuloEstado[estado]
   return (
@@ -55,7 +60,11 @@ export function ListaDezenas({ dezenas, sorteadas, tamanho = 'sm', className }: 
     <ul className={cn('flex flex-wrap gap-1.5', className)} aria-label="Dezenas">
       {dezenas.map((d) => (
         <li key={d}>
-          <BolaDezena numero={d} tamanho={tamanho} estado={sorteadas ? (set.has(d) ? 'acertada' : 'neutra') : 'marcada'} />
+          <BolaDezena
+            numero={d}
+            tamanho={tamanho}
+            estado={sorteadas ? (set.has(d) ? 'acertada' : 'neutra') : 'marcada'}
+          />
         </li>
       ))}
     </ul>

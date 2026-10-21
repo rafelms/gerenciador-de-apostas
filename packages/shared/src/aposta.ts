@@ -14,7 +14,10 @@ export function custoAposta(
   precoSimples: Centavos,
   qtdConcursos = 1,
 ): Centavos {
-  const porConcurso = jogos.reduce((soma, jogo) => soma + regra.custoJogo(jogo.length, precoSimples), 0)
+  const porConcurso = jogos.reduce(
+    (soma, jogo) => soma + regra.custoJogo(jogo.length, precoSimples),
+    0,
+  )
   return porConcurso * qtdConcursos
 }
 

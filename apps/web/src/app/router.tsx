@@ -12,20 +12,33 @@ export const router = createBrowserRouter([
   {
     element: <RotaPublica />,
     children: [
-      { path: '/login', lazy: async () => ({ Component: (await import('@/features/auth/login-page')).LoginPage }) },
+      {
+        path: '/login',
+        lazy: async () => ({ Component: (await import('@/features/auth/login-page')).LoginPage }),
+      },
       {
         path: '/esqueci-senha',
-        lazy: async () => ({ Component: (await import('@/features/auth/esqueci-senha-page')).EsqueciSenhaPage }),
+        lazy: async () => ({
+          Component: (await import('@/features/auth/esqueci-senha-page')).EsqueciSenhaPage,
+        }),
       },
     ],
   },
   // Estas três dependem de uma sessão "em andamento" e cuidam do próprio acesso.
-  { path: '/mfa', lazy: async () => ({ Component: (await import('@/features/auth/mfa-page')).MfaPage }) },
+  {
+    path: '/mfa',
+    lazy: async () => ({ Component: (await import('@/features/auth/mfa-page')).MfaPage }),
+  },
   {
     path: '/redefinir-senha',
-    lazy: async () => ({ Component: (await import('@/features/auth/redefinir-senha-page')).RedefinirSenhaPage }),
+    lazy: async () => ({
+      Component: (await import('@/features/auth/redefinir-senha-page')).RedefinirSenhaPage,
+    }),
   },
-  { path: '/convite', lazy: async () => ({ Component: (await import('@/features/auth/convite-page')).ConvitePage }) },
+  {
+    path: '/convite',
+    lazy: async () => ({ Component: (await import('@/features/auth/convite-page')).ConvitePage }),
+  },
   {
     element: <RotaProtegida />,
     children: [
@@ -34,49 +47,103 @@ export const router = createBrowserRouter([
         children: [
           {
             path: '/',
-            lazy: async () => ({ Component: (await import('@/features/dashboard/dashboard-page')).DashboardPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/dashboard/dashboard-page')).DashboardPage,
+            }),
           },
           {
             path: '/apostas',
-            lazy: async () => ({ Component: (await import('@/features/apostas/apostas-lista-page')).ApostasListaPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/apostas/apostas-lista-page')).ApostasListaPage,
+            }),
           },
           {
             path: '/apostas/nova',
-            lazy: async () => ({ Component: (await import('@/features/apostas/aposta-form-page')).ApostaFormPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/apostas/aposta-form-page')).ApostaFormPage,
+            }),
           },
           {
             path: '/apostas/:id',
-            lazy: async () => ({ Component: (await import('@/features/apostas/aposta-detalhe-page')).ApostaDetalhePage }),
+            lazy: async () => ({
+              Component: (await import('@/features/apostas/aposta-detalhe-page')).ApostaDetalhePage,
+            }),
           },
           {
             path: '/apostas/:id/editar',
-            lazy: async () => ({ Component: (await import('@/features/apostas/aposta-form-page')).ApostaFormPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/apostas/aposta-form-page')).ApostaFormPage,
+            }),
           },
           { path: '/importar', lazy: async () => ({ Component: (await futuras()).ImportarPage }) },
           { path: '/exportar', lazy: async () => ({ Component: (await futuras()).ExportarPage }) },
-          { path: '/resultados', lazy: async () => ({ Component: (await futuras()).ResultadosPage }) },
-          { path: '/calendario', lazy: async () => ({ Component: (await futuras()).CalendarioPage }) },
-          { path: '/analisador', lazy: async () => ({ Component: (await futuras()).AnalisadorPage }) },
-          { path: '/simulador-rateio', lazy: async () => ({ Component: (await futuras()).SimuladorRateioPage }) },
-          { path: '/orcamento', lazy: async () => ({ Component: (await futuras()).OrcamentoPage }) },
-          { path: '/notificacoes', lazy: async () => ({ Component: (await futuras()).NotificacoesPage }) },
+          {
+            path: '/resultados',
+            lazy: async () => ({
+              Component: (await import('@/features/resultados/resultados-page')).ResultadosPage,
+            }),
+          },
+          {
+            path: '/calendario',
+            lazy: async () => ({ Component: (await futuras()).CalendarioPage }),
+          },
+          {
+            path: '/analisador',
+            lazy: async () => ({ Component: (await futuras()).AnalisadorPage }),
+          },
+          {
+            path: '/simulador-rateio',
+            lazy: async () => ({
+              Component: (await import('@/features/simulador/simulador-page')).SimuladorPage,
+            }),
+          },
+          {
+            path: '/orcamento',
+            lazy: async () => ({ Component: (await futuras()).OrcamentoPage }),
+          },
+          {
+            path: '/notificacoes',
+            lazy: async () => ({
+              Component: (await import('@/features/notificacoes/notificacoes-page'))
+                .NotificacoesPage,
+            }),
+          },
           {
             path: '/configuracoes',
             lazy: async () => ({
-              Component: (await import('@/features/configuracoes/configuracoes-page')).ConfiguracoesPage,
+              Component: (await import('@/features/configuracoes/configuracoes-page'))
+                .ConfiguracoesPage,
             }),
           },
           {
             path: '/admin',
             element: <RotaAdmin />,
             children: [
-              { index: true, lazy: async () => ({ Component: (await import('@/features/admin/admin-page')).AdminPage }) },
+              {
+                index: true,
+                lazy: async () => ({
+                  Component: (await import('@/features/admin/admin-page')).AdminPage,
+                }),
+              },
               {
                 path: 'usuarios',
-                lazy: async () => ({ Component: (await import('@/features/admin/usuarios-page')).UsuariosPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/admin/usuarios-page')).UsuariosPage,
+                }),
               },
-              { path: 'resultados', lazy: async () => ({ Component: (await futuras()).AdminResultadosPage }) },
-              { path: 'configuracoes', lazy: async () => ({ Component: (await futuras()).AdminConfiguracoesPage }) },
+              {
+                path: 'resultados',
+                lazy: async () => ({
+                  Component: (await import('@/features/admin/resultados-page')).AdminResultadosPage,
+                }),
+              },
+              {
+                path: 'configuracoes',
+                lazy: async () => ({
+                  Component: (await import('@/features/admin/configuracoes-sistema-page'))
+                    .AdminConfiguracoesPage,
+                }),
+              },
             ],
           },
         ],

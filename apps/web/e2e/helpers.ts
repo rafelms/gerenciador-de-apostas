@@ -99,3 +99,18 @@ export async function semRolagemHorizontal(page: Page) {
   }))
   expect(larguras.conteudo, 'rolagem horizontal detectada').toBeLessThanOrEqual(larguras.janela)
 }
+
+/**
+ * Admin com MFA pela tela: cadastra o TOTP pela API e faz o login + código.
+ * Usa o código da PRÓXIMA janela de 30 s (o da janela atual já foi usado no cadastro).
+ */
+export async function entrarComoAdminComMfa(page: Page) {
+  const { email } = await criarUsuario('admin')
+  const { segredo } = await sessaoAal2(email)
+  await entrarPelaTela(page, email)
+  await expect(page).toHaveURL('/mfa')
+  await page.getByLabel('Código de verificação').fill(gerarTotp(segredo, Date.now() + 30_000))
+  await page.getByRole('button', { name: 'Verificar' }).click()
+  await expect(page).toHaveURL('/')
+  return email
+}

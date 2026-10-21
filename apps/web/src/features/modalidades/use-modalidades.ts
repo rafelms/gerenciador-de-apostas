@@ -1,4 +1,9 @@
-import { ehSlugSuportado, obterRegra, type RegraModalidade, type SlugModalidade } from '@shared/regras/index.ts'
+import {
+  ehSlugSuportado,
+  obterRegra,
+  type RegraModalidade,
+  type SlugModalidade,
+} from '@shared/regras/index.ts'
 import { useQuery } from '@tanstack/react-query'
 
 import { chaves } from '@/lib/query-keys'
@@ -17,7 +22,9 @@ export interface Modalidade {
 async function carregarModalidades(): Promise<Modalidade[]> {
   const { data, error } = await supabase
     .from('modalidades')
-    .select('id, slug, nome, cor_hex, ativa, modalidade_precos (preco_simples_centavos, vigente_desde)')
+    .select(
+      'id, slug, nome, cor_hex, ativa, modalidade_precos (preco_simples_centavos, vigente_desde)',
+    )
     .eq('ativa', true)
     .order('id')
   if (error) throw error
@@ -38,7 +45,11 @@ async function carregarModalidades(): Promise<Modalidade[]> {
 
 /** Catálogo de modalidades ativas (muda raramente: cache longo). */
 export function useModalidades() {
-  return useQuery({ queryKey: chaves.modalidades, queryFn: carregarModalidades, staleTime: 60 * 60 * 1000 })
+  return useQuery({
+    queryKey: chaves.modalidades,
+    queryFn: carregarModalidades,
+    staleTime: 60 * 60 * 1000,
+  })
 }
 
 /** Preço da aposta simples vigente na data (yyyy-mm-dd). */

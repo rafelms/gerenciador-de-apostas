@@ -12,7 +12,15 @@ interface MoneyTextProps {
 /** Valor em BRL, algarismos tabulares e sem quebra de linha (seção 12.4). */
 export function MoneyText({ centavos, comSinal = false, className }: MoneyTextProps) {
   const texto = formatarBRL(Math.abs(centavos))
-  const prefixo = comSinal ? (centavos > 0 ? '+' : centavos < 0 ? '−' : '') : centavos < 0 ? '−' : ''
+  const prefixo = comSinal
+    ? centavos > 0
+      ? '+'
+      : centavos < 0
+        ? '−'
+        : ''
+    : centavos < 0
+      ? '−'
+      : ''
   return (
     <span
       className={cn(
