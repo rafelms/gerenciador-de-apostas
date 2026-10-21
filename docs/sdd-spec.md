@@ -681,6 +681,7 @@ calcularIR(base, cfg):
 - **Entrada:** `{ concurso_id }` (somente service role).
 - Para cada `aposta_concursos` do concurso: confere cada jogo (9.3), grava `conferencias`, calcula prêmio (9.4–9.5), grava `premios`, recalcula `premio_divisoes` (9.6) e atualiza `status` da aposta.
 - **Idempotente:** rodar duas vezes gera o mesmo resultado (upserts).
+- **Conferência sob demanda** (`{ aposta_id }` com o JWT do **dono**): roda ao salvar/editar a aposta (em segundo plano), ao informar prêmio à mão e no botão **"Conferir agora"** do detalhe. Antes de conferir, busca na API **só** os resultados que faltam à aposta (sem dezenas/rateio no banco): 1 chamada ao último concurso e, se preciso, os já sorteados (≤ último, máx. 30). Concursos futuros não geram chamadas extras, e nenhuma chamada é feita se o banco já tem tudo. Concurso novo é conferido para **todos** os usuários (igual ao cron). API fora do ar → confere com o que há no banco e avisa. No ambiente local fica desligada (`RESULTADOS_SOB_DEMANDA = "desligado"` em `config.toml`) para os e2e não dependerem da API real.
 - Notificação por usuário e concurso (`chave_dedup = 'resultado:{concurso_id}'`):
   - premiada: "🎉 Sua aposta na Mega-Sena 3070 foi premiada: R$ X líquidos";
   - não premiada: "Resultado da Mega-Sena 3070 conferido: melhor jogo com 3 acertos".
@@ -779,7 +780,7 @@ Editar: permitido; se já conferida, refaz a conferência automaticamente. Exclu
 
 ### 11.5 Conferência e resultados
 - Página "Resultados": último concurso por modalidade (dezenas, acumulou?, próximo sorteio e estimativa) e lista de concursos com apostas do usuário.
-- Cada aposta mostra o resultado assim que o concurso é sincronizado.
+- Cada aposta mostra o resultado assim que o concurso é sincronizado. Não é preciso esperar o cron: aposta registrada depois do sorteio é conferida ao salvar, e o detalhe tem o botão **"Conferir agora"** enquanto algum concurso estiver aguardando (10.2).
 - Se o resultado não sincronizar (API fora): o admin lança dezenas e rateio manualmente; os membros veem "Aguardando resultado oficial".
 - Prêmio manual: o usuário pode informar o prêmio recebido (`valor_informado_manual`), útil para faixas sem rateio disponível.
 
@@ -950,6 +951,8 @@ Cores-base do produto: **`#282B4A`** (azul-marinho) e **`#EEEBDA`** (creme).
 - `supabase start` (Docker) sobe Postgres/Auth/Storage locais; `pnpm dev` sobe o front.
 - `supabase db reset` aplica migrations + seed. O seed cria modalidades, preços, configurações e 2 usuários de teste locais (`admin@local.test`, `membro@local.test`) **somente no ambiente local**.
 - `pnpm gen:types` → `supabase gen types typescript --local > apps/web/src/types/database.ts`.
+
+> Funcionamento e versionamento do CI/CD em detalhe: [ci-cd.md](ci-cd.md).
 
 ### 13.3 CI (`ci.yml`, em todo PR)
 1. `pnpm install --frozen-lockfile`
