@@ -33,6 +33,9 @@ export interface ResumoModalidade {
   erro?: string
 }
 
+/** De onde veio o resultado. Só `api_caixa` é oficial; os outros são substituídos por ela. */
+export type FonteConcurso = 'api_caixa' | 'manual' | 'usuario'
+
 // A API responde 403 a partir da nuvem do Supabase (pendência P4). Cabeçalhos de
 // navegador, como os do próprio portal de loterias, para não parecer um robô.
 const CABECALHOS_CAIXA = {
@@ -80,28 +83,31 @@ interface LinhaConcurso {
   numero: number
   dezenas: number[] | null
   rateio: unknown
+  fonte: FonteConcurso
 }
 
 /**
- * Grava o concurso (upsert por modalidade + número). Devolve o id e se mudou algo
- * que exige conferir de novo (dezenas ou rateio). Nunca apaga dezenas já gravadas
- * com uma resposta da API que ainda não as tem.
+ * Grava o concurso (upsert por modalidade + número). Devolve o id, se mudou algo
+ * que exige conferir de novo (dezenas ou rateio) e se isso CORRIGIU um resultado não
+ * oficial já conferido (aí as notificações são refeitas). Nunca apaga dezenas já
+ * gravadas com uma resposta da API que ainda não as tem.
  */
 export async function gravarConcurso(
   db: SupabaseClient,
   modalidadeId: number,
   c: ConcursoNormalizado,
-  fonte: 'api_caixa' | 'manual',
-): Promise<{ id: number; novo: boolean; mudou: boolean }> {
+  fonte: FonteConcurso,
+): Promise<{ id: number; novo: boolean; mudou: boolean; corrigido: boolean }> {
   const { data: atual } = await db
     .from('concursos')
-    .select('id, numero, dezenas, rateio')
+    .select('id, numero, dezenas, rateio, fonte')
     .eq('modalidade_id', modalidadeId)
     .eq('numero', c.numero)
     .maybeSingle<LinhaConcurso>()
 
   const rateio = c.rateio.length > 0 ? rateioParaBanco(c.rateio) : null
-  if (atual?.dezenas && !c.dezenas) return { id: atual.id, novo: false, mudou: false }
+  if (atual?.dezenas && !c.dezenas)
+    return { id: atual.id, novo: false, mudou: false, corrigido: false }
 
   const mudou =
     !atual ||
@@ -128,10 +134,19 @@ export async function gravarConcurso(
     .select('id')
     .single<{ id: number }>()
   if (error || !data) throw new Error(`Falha ao gravar o concurso ${c.numero}: ${error?.message}`)
-  return { id: data.id, novo: !atual, mudou }
+  return {
+    id: data.id,
+    novo: !atual,
+    mudou,
+    corrigido: mudou && !!atual?.dezenas && atual.fonte !== 'api_caixa',
+  }
 }
 
-/** Números de concurso que alguma aposta precisa e ainda não têm resultado completo. */
+/**
+ * Números de concurso que alguma aposta precisa e ainda não têm o resultado OFICIAL
+ * completo. Resultados lançados à mão (admin ou usuário) entram de novo: a API tem
+ * prioridade e os substitui assim que responder.
+ */
 async function concursosNecessarios(
   db: SupabaseClient,
   modalidadeId: number,
@@ -151,6 +166,7 @@ async function concursosNecessarios(
     .select('numero')
     .eq('modalidade_id', modalidadeId)
     .in('numero', numeros)
+    .eq('fonte', 'api_caixa')
     .not('dezenas', 'is', null)
     .not('rateio', 'is', null)
   const tem = new Set((prontos ?? []).map((p) => p.numero as number))
@@ -217,10 +233,12 @@ async function sincronizarModalidade(
     regra,
   )
   const paraConferir = new Set<number>()
+  const corrigidos = new Set<number>()
   let inseridos = 0
   const gravadoUltimo = await gravarConcurso(db, modalidade.id, ultimo, 'api_caixa')
   if (gravadoUltimo.novo) inseridos++
   if (gravadoUltimo.mudou) paraConferir.add(gravadoUltimo.id)
+  if (gravadoUltimo.corrigido) corrigidos.add(gravadoUltimo.id)
 
   // 2–4. Concursos que as apostas precisam (máx. 30, com 300 ms entre chamadas).
   const necessarios = (await concursosNecessarios(db, modalidade.id, ultimo.numero))
@@ -237,6 +255,7 @@ async function sincronizarModalidade(
       const g = await gravarConcurso(db, modalidade.id, c, 'api_caixa')
       if (g.novo) inseridos++
       if (g.mudou) paraConferir.add(g.id)
+      if (g.corrigido) corrigidos.add(g.id)
     } catch {
       // Um concurso com falha não impede os outros; tenta de novo na próxima execução.
       falhas.push(numero)
@@ -247,7 +266,8 @@ async function sincronizarModalidade(
   for (const id of await concursosPendentes(db, modalidade.id)) paraConferir.add(id)
   let conferidos = 0
   for (const id of paraConferir) {
-    conferidos += (await conferirConcurso(db, id)).apostasConferidas
+    conferidos += (await conferirConcurso(db, id, { renotificar: corrigidos.has(id) }))
+      .apostasConferidas
   }
   return {
     ultimo: ultimo.numero,
@@ -296,11 +316,13 @@ export async function buscarResultadosDaAposta(
     .eq('aposta_id', apostaId)
   const numeros = (pedidos ?? []).map((p) => p.numero_concurso as number)
   if (numeros.length === 0) return resumo
+  // Como no cron, resultado não oficial conta como "falta": a API o substitui.
   const { data: prontos } = await db
     .from('concursos')
     .select('numero')
     .eq('modalidade_id', aposta.modalidade_id)
     .in('numero', numeros)
+    .eq('fonte', 'api_caixa')
     .not('dezenas', 'is', null)
     .not('rateio', 'is', null)
   const tem = new Set((prontos ?? []).map((p) => p.numero as number))
@@ -308,11 +330,13 @@ export async function buscarResultadosDaAposta(
   if (faltam.length === 0) return resumo
 
   const paraConferir = new Set<number>()
+  const corrigidos = new Set<number>()
   const falhas: number[] = []
   try {
     const ultimo = normalizarConcursoCaixa(await buscarJson(`${base}/${slug}`, deps), regra)
     const g = await gravarConcurso(db, aposta.modalidade_id, ultimo, 'api_caixa')
     if (g.mudou) paraConferir.add(g.id)
+    if (g.corrigido) corrigidos.add(g.id)
     if (faltam.includes(ultimo.numero)) resumo.buscados++
     resumo.futuros = faltam.filter((n) => n > ultimo.numero).length
 
@@ -326,6 +350,7 @@ export async function buscarResultadosDaAposta(
         )
         const gc = await gravarConcurso(db, aposta.modalidade_id, c, 'api_caixa')
         if (gc.mudou) paraConferir.add(gc.id)
+        if (gc.corrigido) corrigidos.add(gc.id)
         resumo.buscados++
       } catch {
         falhas.push(numero)
@@ -336,7 +361,9 @@ export async function buscarResultadosDaAposta(
   }
   if (falhas.length > 0) resumo.erro = `Concursos não obtidos: ${falhas.join(', ')}`
 
-  for (const id of paraConferir) await conferirConcurso(db, id)
+  for (const id of paraConferir) {
+    await conferirConcurso(db, id, { renotificar: corrigidos.has(id) })
+  }
   return resumo
 }
 
