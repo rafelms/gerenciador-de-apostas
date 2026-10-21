@@ -1,6 +1,6 @@
 # LotoGestor
 
-Gerenciador pessoal de apostas das Loterias CAIXA (até 5 usuários). A especificação completa está em [sdd-spec.md](sdd-spec.md).
+Gerenciador pessoal de apostas das Loterias CAIXA (até 5 usuários). A especificação completa está em [docs/sdd-spec.md](docs/sdd-spec.md).
 
 - **Front:** React + Vite (SPA), Tailwind v4, shadcn/ui, TanStack Query — `apps/web`
 - **Regras puras:** TypeScript sem dependências além de `zod` — `packages/shared`

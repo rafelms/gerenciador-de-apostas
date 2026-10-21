@@ -67,8 +67,11 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
     mutationFn: async (valores: FormAposta) => {
       const salvo = await salvarAposta(paraApostaInput(valores, modalidade), id)
       // Se o concurso já foi sorteado, a aposta sai conferida (editar refaz a conferência).
+      // Em segundo plano: a function pode consultar a API da CAIXA, que às vezes demora.
       // Falhar aqui não perde a aposta: a próxima sincronização confere as pendentes.
-      await conferirApostaAgora(salvo).catch(() => undefined)
+      void conferirApostaAgora(salvo)
+        .then(() => queryClient.invalidateQueries({ queryKey: chaves.apostas }))
+        .catch(() => undefined)
       return salvo
     },
     onSuccess: (novoId) => {

@@ -99,16 +99,26 @@ export async function mensagemDaFunction(error: unknown, padrao: string): Promis
   }
 }
 
+export interface ResumoConferirAgora {
+  concursosConferidos: number
+  /** Concursos da aposta ainda não sorteados. */
+  futuros: number
+  /** A API da CAIXA falhou; conferiu só com o que já estava no banco. */
+  apiIndisponivel: boolean
+}
+
 /**
  * Pede a conferência da própria aposta (Edge Function conferir-apostas). Usada
- * depois de criar/editar a aposta e de informar prêmio à mão: o resultado pode já
- * ter saído. Idempotente.
+ * depois de criar/editar a aposta, de informar prêmio à mão e no botão "Conferir
+ * agora": a function busca na API da CAIXA o resultado que ainda não sincronizou,
+ * sem esperar o cron. Idempotente.
  */
 export async function conferirApostaAgora(apostaId: string) {
-  const { error } = await supabase.functions.invoke('conferir-apostas', {
+  const { data, error } = await supabase.functions.invoke<ResumoConferirAgora>('conferir-apostas', {
     body: { aposta_id: apostaId },
   })
   if (error) throw new Error(await mensagemDaFunction(error, 'Não foi possível conferir agora.'))
+  return data!
 }
 
 export async function marcarResgatado(premioId: string, resgatado: boolean) {
