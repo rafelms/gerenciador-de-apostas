@@ -1,0 +1,135 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter';
+@import './tokens.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Papéis semânticos (tabela da seção 12.2). Os componentes usam SOMENTE estes
+ * nomes (bg-background, text-muted-foreground, bg-primary…), nunca hex cru.
+ */
+:root {
+  --background: var(--color-creme-100);
+  --foreground: var(--color-marinho-900);
+  --card: var(--color-creme-50);
+  --card-foreground: var(--color-marinho-900);
+  --popover: var(--color-creme-50);
+  --popover-foreground: var(--color-marinho-900);
+  --primary: var(--color-marinho-900);
+  --primary-foreground: var(--color-creme-100);
+  --secondary: var(--color-creme-200);
+  --secondary-foreground: var(--color-marinho-900);
+  --muted: var(--color-creme-200);
+  --muted-foreground: var(--color-marinho-700);
+  --accent: var(--color-creme-200);
+  --accent-foreground: var(--color-marinho-900);
+  --destructive: var(--color-perigo-600);
+  --border: var(--color-creme-300);
+  --input: var(--color-creme-300);
+  --ring: var(--color-marinho-700);
+  --destaque: var(--color-ouro-500);
+  --destaque-texto: var(--color-ouro-700);
+  --lucro: var(--color-sucesso-600);
+  --prejuizo: var(--color-perigo-600);
+  --alerta: var(--color-alerta-600);
+  --info: var(--color-info-600);
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: var(--color-marinho-950);
+  --foreground: var(--color-creme-100);
+  --card: var(--color-marinho-900);
+  --card-foreground: var(--color-creme-100);
+  --popover: var(--color-marinho-900);
+  --popover-foreground: var(--color-creme-100);
+  --primary: var(--color-creme-100);
+  --primary-foreground: var(--color-marinho-900);
+  --secondary: var(--color-marinho-800);
+  --secondary-foreground: var(--color-creme-100);
+  --muted: var(--color-marinho-800);
+  --muted-foreground: var(--color-marinho-300);
+  --accent: var(--color-marinho-800);
+  --accent-foreground: var(--color-creme-100);
+  --destructive: var(--color-perigo-400);
+  --border: var(--color-marinho-700);
+  --input: var(--color-marinho-700);
+  --ring: var(--color-marinho-300);
+  --destaque: var(--color-ouro-500);
+  --destaque-texto: var(--color-ouro-500);
+  --lucro: var(--color-sucesso-400);
+  --prejuizo: var(--color-perigo-400);
+  --alerta: var(--color-alerta-400);
+  --info: var(--color-info-400);
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destaque: var(--destaque);
+  --color-destaque-texto: var(--destaque-texto);
+  --color-lucro: var(--lucro);
+  --color-prejuizo: var(--prejuizo);
+  --color-alerta: var(--alerta);
+  --color-info: var(--info);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  /* Valores sempre com algarismos tabulares (seção 12.1). */
+  .tabular-nums,
+  [data-numero] {
+    font-variant-numeric: tabular-nums;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href] {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

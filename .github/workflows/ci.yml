@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 1. Dependências
+      - run: pnpm install --frozen-lockfile
+
+      # 2. Lint, formatação e tipos
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - name: Cópia do shared para as Edge Functions está em dia
+        run: pnpm sync:shared:check
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Tipos das Edge Functions
+        working-directory: supabase/functions
+        run: deno check --config deno.json */index.ts
+
+      # 3. Testes unitários (shared com cobertura ≥ 90% + web)
+      - run: pnpm test:coverage
+      - run: pnpm --filter @lotogestor/web test
+
+      # 4. Banco: migrations + seed, pgTAP e lint do schema
+      - name: Supabase local
+        run: pnpm exec supabase start -x studio,imgproxy,vector,logflare
+      - run: pnpm exec supabase db reset
+      - run: pnpm exec supabase test db
+      - run: pnpm exec supabase db lint --level warning --fail-on error
+
+      # 5. Tipos gerados do banco estão atualizados
+      - name: Tipos do banco em dia
+        run: |
+          pnpm gen:types
+          git diff --exit-code apps/web/src/types/database.ts
+
+      # 6. Build (e nenhuma chave secreta no bundle — Apêndice C)
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
+      - name: Bundle inicial < 250 KB gzip (seção 16)
+        run: node scripts/tamanho-bundle.mjs 250
+      - name: Nenhuma chave secreta no bundle
+        run: |
+          if grep -rE "sb_secret_|service_role" apps/web/dist; then
+            echo "Chave secreta encontrada no bundle!"; exit 1
+          fi
+
+      # 7. E2E (Playwright) em 360×800 e 1280×800 contra o Supabase local
+      - run: pnpm --filter @lotogestor/web exec playwright install --with-deps chromium
+      - name: Playwright
+        working-directory: apps/web
+        run: |
+          printf 'VITE_SUPABASE_URL=http://127.0.0.1:54321\nVITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH\n' > .env.local
+          pnpm test:e2e
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/test-results
+          retention-days: 7

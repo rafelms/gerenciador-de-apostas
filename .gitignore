@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+.vercel/
+
+# Variáveis de ambiente (nunca commitar valores)
+.env
+.env.*
+!.env.example
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+supabase/functions/.env
+
+# Playwright
+test-results/
+playwright-report/
+
+.DS_Store
+Thumbs.db

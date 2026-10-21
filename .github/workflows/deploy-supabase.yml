@@ -1,0 +1,32 @@
+name: Deploy Supabase
+
+# Banco e Edge Functions de produção (seção 13.4). O front vai pela integração Git da Vercel.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'packages/shared/src/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-supabase
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: producao
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: node scripts/sync-shared.mjs --check
+      - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - run: supabase db push
+      - run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"

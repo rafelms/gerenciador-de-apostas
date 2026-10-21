@@ -1,0 +1,41 @@
+/*
+ * Tokens de cor do LotoGestor (spec seção 12.2).
+ * Bases do produto: marinho-900 #282B4A e creme-100 #EEEBDA.
+ *
+ * Ajustes de contraste (AA ≥ 4.5:1, verificado por script):
+ *   ouro-700    #8A6D12 → #7A600F  (4.10 → ≥ 4.5 sobre creme-100)
+ *   sucesso-600 #2E7D4F → #276C44  (4.21 → ≥ 4.5 sobre creme-100)
+ *   alerta-600  #A8660F → #8C550B  (3.83 → ≥ 4.5 sobre creme-100)
+ * As versões "400" são para texto sobre o fundo escuro.
+ */
+@theme {
+  /* Marinho */
+  --color-marinho-950: #1a1c33;
+  --color-marinho-900: #282b4a; /* BASE */
+  --color-marinho-800: #343860;
+  --color-marinho-700: #444977;
+  --color-marinho-500: #6a6f9e;
+  --color-marinho-300: #a9accb;
+  --color-marinho-100: #dcddea;
+
+  /* Creme */
+  --color-creme-50: #f8f6ee;
+  --color-creme-100: #eeebda; /* BASE */
+  --color-creme-200: #e3dec4;
+  --color-creme-300: #cfc8a6;
+  --color-creme-500: #a39b76;
+
+  /* Destaque (prêmio) */
+  --color-ouro-500: #c9a227; /* fundos, bordas, bolinhas acertadas */
+  --color-ouro-700: #7a600f; /* texto dourado sobre creme (AA) */
+
+  /* Semânticas */
+  --color-sucesso-600: #276c44;
+  --color-perigo-600: #b23a2b;
+  --color-alerta-600: #8c550b;
+  --color-info-600: #3a5a9b;
+  --color-sucesso-400: #6bc58f;
+  --color-perigo-400: #f08a7c;
+  --color-alerta-400: #e3a54a;
+  --color-info-400: #93aee8;
+}

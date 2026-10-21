@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+dist/
+coverage/
+apps/web/src/types/database.ts
+apps/web/src/components/ui/
+supabase/functions/_shared/domain/
+sdd-spec.md

@@ -1,0 +1,24 @@
+{
+  "name": "@lotogestor/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Regras puras do LotoGestor (sem React, sem Supabase). Única dependência permitida: zod.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.5",
+    "vitest": "^5.0.5"
+  }
+}
