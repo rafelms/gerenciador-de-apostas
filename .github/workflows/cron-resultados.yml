@@ -1,0 +1,35 @@
+name: Cron — resultados
+
+# Sincroniza os resultados das loterias e, de quebra, mantém o projeto Supabase Free
+# ativo (ele pausa após 7 dias sem atividade) — seções 3 (ADR-07) e 10.4.
+#   22h30 BRT (01h30 UTC): depois dos sorteios da noite
+#   09h00 BRT (12h00 UTC): repescagem, caso a API da CAIXA tenha falhado à noite
+on:
+  schedule:
+    - cron: '30 1 * * *'
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: cron-resultados
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: producao
+    steps:
+      - name: Chamar sync-resultados
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+        run: |
+          # O corpo de resposta tem só o resumo por modalidade (sem dados de usuários).
+          status=$(curl -sS -o resposta.json -w '%{http_code}' --max-time 300 \
+            -X POST "$SUPABASE_FUNCTIONS_URL/sync-resultados" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H 'Content-Type: application/json' -d '{}')
+          cat resposta.json; echo
+          # Falha de uma modalidade NÃO derruba o job (fica no sync_logs); só erro geral falha.
+          test "$status" = "200"

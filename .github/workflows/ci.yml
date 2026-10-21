@@ -38,7 +38,7 @@ jobs:
           deno-version: v2.x
       - name: Tipos das Edge Functions
         working-directory: supabase/functions
-        run: deno check --config deno.json */index.ts
+        run: deno check --config deno.json */index.ts tests/*.ts
 
       # 3. Testes unitários (shared com cobertura ≥ 90% + web)
       - run: pnpm test:coverage
@@ -50,6 +50,9 @@ jobs:
       - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
       - run: pnpm exec supabase db lint --level warning --fail-on error
+      - name: Testes das Edge Functions (API da CAIXA simulada)
+        working-directory: supabase/functions
+        run: deno test --allow-net --allow-env --allow-read tests/
 
       # 5. Tipos gerados do banco estão atualizados
       - name: Tipos do banco em dia
@@ -67,7 +70,9 @@ jobs:
         run: node scripts/tamanho-bundle.mjs 250
       - name: Nenhuma chave secreta no bundle
         run: |
-          if grep -rE "sb_secret_|service_role" apps/web/dist; then
+          # O supabase-js contém o PREFIXO "sb_secret_" (para reconhecer chaves); procuramos
+          # uma chave de fato (prefixo + valor) ou o papel service_role em texto.
+          if grep -rE "sb_secret_[A-Za-z0-9_-]{16,}|service_role" apps/web/dist; then
             echo "Chave secreta encontrada no bundle!"; exit 1
           fi
 
