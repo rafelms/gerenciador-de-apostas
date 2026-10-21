@@ -246,6 +246,89 @@ async function sincronizarModalidade(
   }
 }
 
+export interface ResumoBuscaAposta {
+  /** Concursos da aposta gravados agora a partir da API. */
+  buscados: number
+  /** Concursos da aposta que ainda não foram sorteados (número > último da API). */
+  futuros: number
+  erro?: string
+}
+
+/**
+ * Busca na API, na hora, os resultados que faltam para UMA aposta (ex.: registrada
+ * depois do sorteio, antes do cron das 22h30). Só consulta concursos já sorteados
+ * (≤ último), então apostas para concursos futuros custam uma chamada só — e
+ * nenhuma quando o banco já tem tudo. Concursos novos são conferidos para todos os
+ * usuários (a mesma conferência do cron). Nunca lança: falha da API vira `erro`.
+ */
+export async function buscarResultadosDaAposta(
+  deps: Dependencias,
+  apostaId: string,
+): Promise<ResumoBuscaAposta> {
+  const { db } = deps
+  const esperar = deps.esperar ?? esperarPadrao
+  const base = deps.urlApi ?? URL_API_CAIXA
+  const resumo: ResumoBuscaAposta = { buscados: 0, futuros: 0 }
+
+  const { data: aposta } = await db
+    .from('apostas')
+    .select('modalidade_id, modalidades (slug)')
+    .eq('id', apostaId)
+    .maybeSingle<{ modalidade_id: number; modalidades: { slug: string } | null }>()
+  const slug = aposta?.modalidades?.slug
+  if (!aposta || !slug || !ehSlugSuportado(slug)) return resumo
+  const regra = obterRegra(slug)
+
+  const { data: pedidos } = await db
+    .from('aposta_concursos')
+    .select('numero_concurso')
+    .eq('aposta_id', apostaId)
+  const numeros = (pedidos ?? []).map((p) => p.numero_concurso as number)
+  if (numeros.length === 0) return resumo
+  const { data: prontos } = await db
+    .from('concursos')
+    .select('numero')
+    .eq('modalidade_id', aposta.modalidade_id)
+    .in('numero', numeros)
+    .not('dezenas', 'is', null)
+    .not('rateio', 'is', null)
+  const tem = new Set((prontos ?? []).map((p) => p.numero as number))
+  const faltam = numeros.filter((n) => !tem.has(n)).sort((a, b) => a - b)
+  if (faltam.length === 0) return resumo
+
+  const paraConferir = new Set<number>()
+  const falhas: number[] = []
+  try {
+    const ultimo = normalizarConcursoCaixa(await buscarJson(`${base}/${slug}`, deps), regra)
+    const g = await gravarConcurso(db, aposta.modalidade_id, ultimo, 'api_caixa')
+    if (g.mudou) paraConferir.add(g.id)
+    if (faltam.includes(ultimo.numero)) resumo.buscados++
+    resumo.futuros = faltam.filter((n) => n > ultimo.numero).length
+
+    const sorteados = faltam.filter((n) => n < ultimo.numero).slice(0, MAX_CONCURSOS_POR_EXECUCAO)
+    for (const numero of sorteados) {
+      await esperar(INTERVALO_MS)
+      try {
+        const c = normalizarConcursoCaixa(
+          await buscarJson(`${base}/${slug}/${numero}`, deps),
+          regra,
+        )
+        const gc = await gravarConcurso(db, aposta.modalidade_id, c, 'api_caixa')
+        if (gc.mudou) paraConferir.add(gc.id)
+        resumo.buscados++
+      } catch {
+        falhas.push(numero)
+      }
+    }
+  } catch (e) {
+    resumo.erro = e instanceof Error ? e.message : String(e)
+  }
+  if (falhas.length > 0) resumo.erro = `Concursos não obtidos: ${falhas.join(', ')}`
+
+  for (const id of paraConferir) await conferirConcurso(db, id)
+  return resumo
+}
+
 /** Sincroniza todas as modalidades ativas. Erros de uma modalidade não param as outras. */
 export async function sincronizar(
   deps: Dependencias,

@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   carregarConferencia,
+  conferirApostaAgora,
   carregarConfigPremio,
   type ConcursoDaAposta,
 } from '@/features/conferencia/api'
@@ -92,6 +93,40 @@ function SeletorConcurso({
   )
 }
 
+/**
+ * Busca o resultado na hora (sem esperar o cron das 22h30): útil para a aposta
+ * registrada depois do sorteio ou quando o resultado acabou de sair.
+ */
+function ConferirAgora({ apostaId }: { apostaId: string }) {
+  const queryClient = useQueryClient()
+  const conferir = useMutation({
+    mutationFn: () => conferirApostaAgora(apostaId),
+    onSuccess: (r) => {
+      void queryClient.invalidateQueries({ queryKey: chaves.apostas })
+      void queryClient.invalidateQueries({ queryKey: chaves.notificacoes })
+      if (r.apiIndisponivel)
+        toast.warning('O site da CAIXA não respondeu. Tente de novo em alguns minutos.')
+      else if (r.concursosConferidos > 0) toast.success('Aposta conferida.')
+      else toast.info('O resultado ainda não saiu.')
+    },
+    onError: (e) => toast.error(e.message),
+  })
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => conferir.mutate()}
+      disabled={conferir.isPending}
+    >
+      <RefreshCw
+        className={cn('size-4', conferir.isPending && 'animate-spin')}
+        aria-hidden="true"
+      />
+      {conferir.isPending ? 'Conferindo…' : 'Conferir agora'}
+    </Button>
+  )
+}
+
 function Jogos({
   aposta,
   concurso,
@@ -129,10 +164,13 @@ function Jogos({
           </div>
         ) : (
           concurso && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CalendarClock className="size-4" aria-hidden="true" /> Aguardando resultado oficial
-              do concurso {concurso.numero}.
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CalendarClock className="size-4" aria-hidden="true" /> Aguardando resultado oficial
+                do concurso {concurso.numero}.
+              </p>
+              <ConferirAgora apostaId={aposta.id} />
+            </div>
           )
         )}
         <ol className="grid gap-3">

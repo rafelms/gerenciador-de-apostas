@@ -5,7 +5,12 @@ import { assert, assertEquals, assertRejects } from '@std/assert'
 import { createClient } from '@supabase/supabase-js'
 
 import { conferirAposta, conferirConcurso } from '../_shared/conferir.ts'
-import { buscarJson, gravarConcurso, sincronizar } from '../_shared/sincronizar.ts'
+import {
+  buscarJson,
+  buscarResultadosDaAposta,
+  gravarConcurso,
+  sincronizar,
+} from '../_shared/sincronizar.ts'
 
 const URL_LOCAL = Deno.env.get('SUPABASE_URL') ?? 'http://127.0.0.1:54321'
 const CHAVE =
@@ -203,6 +208,65 @@ Deno.test(
       assert(
         notificacoes![0]!.titulo.startsWith(`🎉 Sua aposta na Mega-Sena ${ANTERIOR} foi premiada`),
       )
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
+
+Deno.test(
+  'conferir agora: busca na API o resultado que falta à aposta, sem esperar o cron',
+  opcoes,
+  async () => {
+    const { userId, apostaId, megaId } = await criarCenario()
+    try {
+      const chamadas: string[] = []
+      const deps = {
+        db,
+        fetch: apiSimulada(chamadas),
+        esperar: semEspera,
+        urlApi: 'https://api.test',
+      }
+      const r = await buscarResultadosDaAposta(deps, apostaId)
+      assertEquals(r, { buscados: 1, futuros: 0 })
+      // Só a modalidade da aposta: o último e o concurso que falta.
+      assertEquals(chamadas, ['https://api.test/megasena', `https://api.test/megasena/${ANTERIOR}`])
+      const { data: aposta } = await db.from('apostas').select('status').eq('id', apostaId).single()
+      assertEquals(aposta!.status, 'premiada')
+
+      // Com o resultado no banco, não consulta a API de novo.
+      chamadas.length = 0
+      assertEquals(await buscarResultadosDaAposta(deps, apostaId), { buscados: 0, futuros: 0 })
+      assertEquals(chamadas, [])
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
+
+Deno.test(
+  'conferir agora: concurso futuro custa uma chamada; API fora vira erro',
+  opcoes,
+  async () => {
+    const { userId, apostaId, megaId } = await criarCenario()
+    try {
+      await db
+        .from('apostas')
+        .update({ concurso_inicial: ULTIMO + 1 })
+        .eq('id', apostaId)
+      const chamadas: string[] = []
+      const deps = {
+        db,
+        fetch: apiSimulada(chamadas),
+        esperar: semEspera,
+        urlApi: 'https://api.test',
+      }
+      assertEquals(await buscarResultadosDaAposta(deps, apostaId), { buscados: 0, futuros: 1 })
+      assertEquals(chamadas, ['https://api.test/megasena'])
+
+      const fora = (() => Promise.resolve(new Response('', { status: 503 }))) as typeof fetch
+      const r = await buscarResultadosDaAposta({ ...deps, fetch: fora }, apostaId)
+      assert(r.erro?.includes('API indisponível'))
     } finally {
       await limpar(userId, megaId)
     }
