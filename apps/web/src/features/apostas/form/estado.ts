@@ -184,12 +184,16 @@ const mapaCampos: Record<string, string> = {
   valorPagoCentavos: 'valorPago',
 }
 
-/** Grava `valor` em obj["a"]["b"] para o caminho "a.b"; mantém o primeiro erro de cada campo. */
+/**
+ * Grava `valor` em obj["a"]["b"] para o caminho "a.b"; mantém o primeiro erro de cada campo.
+ * Field arrays (próximo segmento numérico ou `root`) viram arrays: o `trigger` do RHF descarta
+ * erros de field array em objeto quando não há inputs registrados dentro dele.
+ */
 function definirAninhado(obj: Record<string, unknown>, caminho: string, valor: unknown) {
   const partes = caminho.split('.')
   let atual = obj
-  partes.slice(0, -1).forEach((p) => {
-    atual[p] ??= {}
+  partes.slice(0, -1).forEach((p, i) => {
+    atual[p] ??= /^(\d+|root)$/.test(partes[i + 1]!) ? [] : {}
     atual = atual[p] as Record<string, unknown>
   })
   const ultima = partes.at(-1)!

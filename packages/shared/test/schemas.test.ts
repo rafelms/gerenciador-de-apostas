@@ -59,6 +59,14 @@ describe('apostaSchema', () => {
     )
   })
 
+  it('valida as dezenas mesmo com outro campo inválido (o formulário mostra o erro do jogo)', () => {
+    expect(
+      mensagens({ ...base, jogos: [[1, 2, 3, 4, 5]], valorPagoCentavos: Number.NaN }),
+    ).toContain('Jogo 1: Mega-Sena aceita de 6 a 20 dezenas; encontradas 5')
+    // Sem modalidade válida não há regra para validar as dezenas.
+    expect(mensagens({ ...base, modalidadeSlug: 'x', jogos: [[1]] })).toHaveLength(1)
+  })
+
   it('teimosinha precisa de 2+ concursos e só ela pode ter mais de 1', () => {
     expect(mensagens({ ...base, tipo: 'teimosinha', qtdConcursos: 1 })).toContain(
       'A teimosinha precisa de 2 a 24 concursos.',

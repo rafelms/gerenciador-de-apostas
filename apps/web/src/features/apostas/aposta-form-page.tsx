@@ -146,12 +146,14 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
             </Button>
           )}
           <span className="flex-1" />
+          {/* Keys distintas: se o React reaproveitar o <button> e trocar o type para "submit"
+              durante o clique em "Próximo", o navegador envia o formulário na última etapa. */}
           {!desktop && !ultima ? (
-            <Button type="button" onClick={() => void avancar()}>
+            <Button key="proximo" type="button" onClick={() => void avancar()}>
               Próximo <ArrowRight aria-hidden="true" />
             </Button>
           ) : (
-            <Button type="submit" disabled={salvar.isPending} size="lg">
+            <Button key="enviar" type="submit" disabled={salvar.isPending} size="lg">
               {salvar.isPending ? (
                 <Loader2 className="animate-spin" aria-hidden="true" />
               ) : (

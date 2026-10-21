@@ -63,7 +63,7 @@ test.describe('Aceite F1', () => {
     await page.goto('/apostas')
     await expect(page.getByRole('link', { name: 'Mega-Sena 3070' })).toBeVisible()
     await expect(
-      page.getByRole('link', { name: 'Mega-Sena 3070' }).getByText('R$ 42,00'),
+      page.getByRole('link', { name: 'Mega-Sena 3070' }).getByText('R$ 42,00', { exact: true }),
     ).toBeVisible()
   })
 
@@ -304,7 +304,7 @@ test.describe('Aceite F1', () => {
     const gasto = page
       .locator('section')
       .filter({ has: page.getByRole('heading', { name: 'Gasto' }) })
-    await expect(gasto.getByText('R$ 42,00')).toBeVisible()
+    await expect(gasto.getByText('R$ 42,00', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Mega-Sena 3070' })).toBeVisible()
     await semRolagemHorizontal(page)
   })

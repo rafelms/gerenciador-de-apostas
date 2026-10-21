@@ -62,13 +62,6 @@ export const apostaSchema = z
       })
     }
 
-    const regra = obterRegra(a.modalidadeSlug)
-    a.jogos.forEach((jogo, i) => {
-      for (const erro of regra.validarJogo(jogo)) {
-        ctx.addIssue({ code: 'custom', path: ['jogos', i], message: `Jogo ${i + 1}: ${erro}` })
-      }
-    })
-
     if (a.tipo === 'bolao') {
       if (!a.bolao) {
         ctx.addIssue({ code: 'custom', path: ['bolao'], message: 'Informe os dados do bolão.' })
@@ -143,6 +136,22 @@ export const apostaSchema = z
       }
     }
   })
+  .superRefine(
+    (a, ctx) => {
+      const regra = obterRegra(a.modalidadeSlug)
+      a.jogos.forEach((jogo, i) => {
+        for (const erro of regra.validarJogo(jogo)) {
+          ctx.addIssue({ code: 'custom', path: ['jogos', i], message: `Jogo ${i + 1}: ${erro}` })
+        }
+      })
+    },
+    // Roda mesmo que outros campos falhem (ex.: valor pago ainda vazio): o erro das dezenas
+    // precisa aparecer no formulário. Só depende de modalidade e jogos estarem bem formados.
+    {
+      when: (p) =>
+        !p.issues.some((i) => i.path?.[0] === 'modalidadeSlug' || i.path?.[0] === 'jogos'),
+    },
+  )
 
 export type ApostaInput = z.infer<typeof apostaSchema>
 

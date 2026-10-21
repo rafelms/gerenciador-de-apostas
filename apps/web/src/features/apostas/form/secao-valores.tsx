@@ -16,8 +16,9 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
   const calculado = valorCalculado(form, modalidade)
   const listaAvisos = avisos(form, modalidade)
 
-  // Enquanto o usuário não digita o valor pago, mostramos o calculado.
-  const registroPago = register('valorPago', {
+  // Enquanto o usuário não digita o valor pago, mostramos o calculado (campo controlado).
+  // O RHF recebe um ref só de foco: com o <input> real, ele regravava '' no DOM ao montar a etapa.
+  const { ref: refPago, ...registroPago } = register('valorPago', {
     onChange: () => setValue('valorPagoManual', true),
   })
 
@@ -91,6 +92,7 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
       >
         <InputDinheiro
           {...registroPago}
+          ref={(el) => refPago(el && { focus: () => el.focus() })}
           value={
             form.valorPagoManual
               ? form.valorPago
