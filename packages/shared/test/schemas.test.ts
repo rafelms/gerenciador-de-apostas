@@ -41,7 +41,13 @@ describe('apostaSchema', () => {
         [2, 9, 24, 28, 44, 48, 49],
         [2, 6, 28, 41, 44, 49, 53],
       ],
-      bolao: { totalCotas: 38, cotasUsuario: 1, numeroCota: 35, valorCotaCentavos: 884, tarifaCentavos: 309 },
+      bolao: {
+        totalCotas: 38,
+        cotasUsuario: 1,
+        numeroCota: 35,
+        valorCotaCentavos: 884,
+        tarifaCentavos: 309,
+      },
       valorPagoCentavos: 1193,
     }
     expect(mensagens(bolao)).toEqual([])
@@ -54,8 +60,12 @@ describe('apostaSchema', () => {
   })
 
   it('teimosinha precisa de 2+ concursos e só ela pode ter mais de 1', () => {
-    expect(mensagens({ ...base, tipo: 'teimosinha', qtdConcursos: 1 })).toContain('A teimosinha precisa de 2 a 24 concursos.')
-    expect(mensagens({ ...base, qtdConcursos: 3 })).toContain('Só a teimosinha vale para mais de um concurso.')
+    expect(mensagens({ ...base, tipo: 'teimosinha', qtdConcursos: 1 })).toContain(
+      'A teimosinha precisa de 2 a 24 concursos.',
+    )
+    expect(mensagens({ ...base, qtdConcursos: 3 })).toContain(
+      'Só a teimosinha vale para mais de um concurso.',
+    )
     expect(mensagens({ ...base, tipo: 'teimosinha', qtdConcursos: 3 })).toEqual([])
   })
 
@@ -68,7 +78,13 @@ describe('apostaSchema', () => {
         [1, 2, 3, 4, 5, 6],
         [1, 2, 3, 4, 5, 6, 7],
       ],
-      bolao: { totalCotas: 5, cotasUsuario: 6, numeroCota: 9, valorCotaCentavos: 1000, tarifaCentavos: 400 },
+      bolao: {
+        totalCotas: 5,
+        cotasUsuario: 6,
+        numeroCota: 9,
+        valorCotaCentavos: 1000,
+        tarifaCentavos: 400,
+      },
     })
     expect(r).toEqual(
       expect.arrayContaining([
@@ -92,7 +108,9 @@ describe('apostaSchema', () => {
     const eu = { nome: 'Eu', peso: 1, ehUsuario: true }
     const joao = { nome: 'João', peso: 1, ehUsuario: false }
     expect(mensagens({ ...base, participantes: [eu, joao] })).toEqual([])
-    expect(mensagens({ ...base, participantes: [joao] })).toContain('A divisão precisa incluir você exatamente uma vez.')
+    expect(mensagens({ ...base, participantes: [joao] })).toContain(
+      'A divisão precisa incluir você exatamente uma vez.',
+    )
     expect(
       mensagens({
         ...base,
@@ -102,9 +120,9 @@ describe('apostaSchema', () => {
         ],
       }),
     ).toContain('A soma das contribuições precisa ser igual ao valor pago.')
-    expect(mensagens({ ...base, participantes: [{ ...eu, contribuicaoCentavos: 300 }, joao] })).toContain(
-      'Informe a contribuição de todos ou de ninguém.',
-    )
+    expect(
+      mensagens({ ...base, participantes: [{ ...eu, contribuicaoCentavos: 300 }, joao] }),
+    ).toContain('Informe a contribuição de todos ou de ninguém.')
     expect(
       mensagens({
         ...base,
@@ -124,7 +142,13 @@ describe('apostaParaRpc', () => {
         ...base,
         tipo: 'bolao',
         jogos: [[49, 2, 9, 24, 28, 44, 48]],
-        bolao: { totalCotas: 38, cotasUsuario: 1, numeroCota: 35, valorCotaCentavos: 884, tarifaCentavos: 309 },
+        bolao: {
+          totalCotas: 38,
+          cotasUsuario: 1,
+          numeroCota: 35,
+          valorCotaCentavos: 884,
+          tarifaCentavos: 309,
+        },
         valorPagoCentavos: 1193,
         participantes: [{ nome: 'Eu', peso: 1, ehUsuario: true }],
       },
@@ -168,8 +192,16 @@ describe('schemas de autenticação', () => {
   })
 
   it('confirmação de senha precisa conferir', () => {
-    expect(definirSenhaSchema.safeParse({ senha: 'Senha12345', confirmacao: 'Senha12346' }).success).toBe(false)
-    expect(aceitarConviteSchema.safeParse({ nome: 'Ana', senha: 'Senha12345', confirmacao: 'Senha12345' }).success).toBe(true)
+    expect(
+      definirSenhaSchema.safeParse({ senha: 'Senha12345', confirmacao: 'Senha12346' }).success,
+    ).toBe(false)
+    expect(
+      aceitarConviteSchema.safeParse({
+        nome: 'Ana',
+        senha: 'Senha12345',
+        confirmacao: 'Senha12345',
+      }).success,
+    ).toBe(true)
   })
 
   it('código TOTP tem 6 dígitos', () => {

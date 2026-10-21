@@ -1,5 +1,15 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ListChecks, Loader2, Plus, RefreshCw, Search, SlidersHorizontal, Ticket, Trash2, X } from 'lucide-react'
+import {
+  ListChecks,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Ticket,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -21,12 +31,27 @@ import { formatarData } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import { excluirApostas, listarApostas, TAMANHO_PAGINA, type FiltrosApostas } from './api'
 import { ApostaCard } from './aposta-card'
-import { filtrosDaUrl, filtrosParaUrl, ORIGENS, rotulosOrigem, rotulosTipo, STATUS, TIPOS } from './filtros'
+import {
+  filtrosDaUrl,
+  filtrosParaUrl,
+  ORIGENS,
+  rotulosOrigem,
+  rotulosTipo,
+  STATUS,
+  TIPOS,
+} from './filtros'
 
-function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar: (f: FiltrosApostas) => void }) {
+function PainelFiltros({
+  filtros,
+  aplicar,
+}: {
+  filtros: FiltrosApostas
+  aplicar: (f: FiltrosApostas) => void
+}) {
   const { data: modalidades } = useModalidades()
   const [rascunho, setRascunho] = useState(filtros)
-  const set = <K extends keyof FiltrosApostas>(k: K, v: FiltrosApostas[K]) => setRascunho((r) => ({ ...r, [k]: v }))
+  const set = <K extends keyof FiltrosApostas>(k: K, v: FiltrosApostas[K]) =>
+    setRascunho((r) => ({ ...r, [k]: v }))
 
   return (
     <form
@@ -38,7 +63,10 @@ function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar:
     >
       <div className="grid grid-cols-2 gap-3">
         <Campo label="Modalidade">
-          <SelectNativo value={rascunho.modalidade ?? ''} onChange={(e) => set('modalidade', e.target.value || undefined)}>
+          <SelectNativo
+            value={rascunho.modalidade ?? ''}
+            onChange={(e) => set('modalidade', e.target.value || undefined)}
+          >
             <option value="">Todas</option>
             {modalidades?.map((m) => (
               <option key={m.slug} value={m.slug}>
@@ -48,7 +76,10 @@ function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar:
           </SelectNativo>
         </Campo>
         <Campo label="Tipo">
-          <SelectNativo value={rascunho.tipo ?? ''} onChange={(e) => set('tipo', (e.target.value || undefined) as FiltrosApostas['tipo'])}>
+          <SelectNativo
+            value={rascunho.tipo ?? ''}
+            onChange={(e) => set('tipo', (e.target.value || undefined) as FiltrosApostas['tipo'])}
+          >
             <option value="">Todos</option>
             {TIPOS.map((t) => (
               <option key={t} value={t}>
@@ -58,7 +89,12 @@ function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar:
           </SelectNativo>
         </Campo>
         <Campo label="Status">
-          <SelectNativo value={rascunho.status ?? ''} onChange={(e) => set('status', (e.target.value || undefined) as FiltrosApostas['status'])}>
+          <SelectNativo
+            value={rascunho.status ?? ''}
+            onChange={(e) =>
+              set('status', (e.target.value || undefined) as FiltrosApostas['status'])
+            }
+          >
             <option value="">Todos</option>
             {STATUS.map((s) => (
               <option key={s} value={s}>
@@ -68,7 +104,12 @@ function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar:
           </SelectNativo>
         </Campo>
         <Campo label="Origem">
-          <SelectNativo value={rascunho.origem ?? ''} onChange={(e) => set('origem', (e.target.value || undefined) as FiltrosApostas['origem'])}>
+          <SelectNativo
+            value={rascunho.origem ?? ''}
+            onChange={(e) =>
+              set('origem', (e.target.value || undefined) as FiltrosApostas['origem'])
+            }
+          >
             <option value="">Todas</option>
             {ORIGENS.map((o) => (
               <option key={o} value={o}>
@@ -78,21 +119,37 @@ function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar:
           </SelectNativo>
         </Campo>
         <Campo label="De">
-          <Input type="date" value={rascunho.de ?? ''} onChange={(e) => set('de', e.target.value || undefined)} />
+          <Input
+            type="date"
+            value={rascunho.de ?? ''}
+            onChange={(e) => set('de', e.target.value || undefined)}
+          />
         </Campo>
         <Campo label="Até">
-          <Input type="date" value={rascunho.ate ?? ''} onChange={(e) => set('ate', e.target.value || undefined)} />
+          <Input
+            type="date"
+            value={rascunho.ate ?? ''}
+            onChange={(e) => set('ate', e.target.value || undefined)}
+          />
         </Campo>
       </div>
       <div className="flex items-center gap-3">
-        <Checkbox id="so-premiadas" checked={!!rascunho.premiadas} onCheckedChange={(v) => set('premiadas', v === true || undefined)} className="size-5" />
+        <Checkbox
+          id="so-premiadas"
+          checked={!!rascunho.premiadas}
+          onCheckedChange={(v) => set('premiadas', v === true || undefined)}
+          className="size-5"
+        />
         <Label htmlFor="so-premiadas">Só premiadas</Label>
       </div>
       <Campo label="Ordenar por">
         <SelectNativo
           value={`${rascunho.ordem}:${rascunho.direcao}`}
           onChange={(e) => {
-            const [ordem, direcao] = e.target.value.split(':') as [FiltrosApostas['ordem'], FiltrosApostas['direcao']]
+            const [ordem, direcao] = e.target.value.split(':') as [
+              FiltrosApostas['ordem'],
+              FiltrosApostas['direcao'],
+            ]
             setRascunho((r) => ({ ...r, ordem, direcao }))
           }}
         >
@@ -105,7 +162,11 @@ function PainelFiltros({ filtros, aplicar }: { filtros: FiltrosApostas; aplicar:
         </SelectNativo>
       </Campo>
       <div className="flex justify-between gap-2">
-        <Button type="button" variant="ghost" onClick={() => aplicar({ ordem: 'data', direcao: 'desc' })}>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => aplicar({ ordem: 'data', direcao: 'desc' })}
+        >
           Limpar
         </Button>
         <Button type="submit">Aplicar filtros</Button>
@@ -127,7 +188,8 @@ export function ApostasListaPage() {
     queryKey: chaves.listaApostas(filtros),
     queryFn: ({ pageParam }) => listarApostas(filtros, pageParam),
     initialPageParam: 0,
-    getNextPageParam: (ultima, todas) => (ultima.length === TAMANHO_PAGINA ? todas.length : undefined),
+    getNextPageParam: (ultima, todas) =>
+      ultima.length === TAMANHO_PAGINA ? todas.length : undefined,
   })
   const apostas = consulta.data?.pages.flat() ?? []
 
@@ -147,7 +209,9 @@ export function ApostasListaPage() {
   const excluir = useMutation({
     mutationFn: () => excluirApostas([...selecionadas]),
     onSuccess: () => {
-      toast.success(selecionadas.size === 1 ? 'Aposta excluída.' : `${selecionadas.size} apostas excluídas.`)
+      toast.success(
+        selecionadas.size === 1 ? 'Aposta excluída.' : `${selecionadas.size} apostas excluídas.`,
+      )
       setSelecionadas(new Set())
       setSelecionando(false)
       void queryClient.invalidateQueries({ queryKey: chaves.apostas })
@@ -169,14 +233,26 @@ export function ApostasListaPage() {
   // Chips dos filtros ativos (cada um removível).
   const nomeModalidade = modalidades?.find((m) => m.slug === filtros.modalidade)?.nome
   const ativos: { rotulo: string; remover: Partial<FiltrosApostas> }[] = []
-  if (filtros.modalidade) ativos.push({ rotulo: nomeModalidade ?? filtros.modalidade, remover: { modalidade: undefined } })
+  if (filtros.modalidade)
+    ativos.push({
+      rotulo: nomeModalidade ?? filtros.modalidade,
+      remover: { modalidade: undefined },
+    })
   if (filtros.tipo) ativos.push({ rotulo: rotulosTipo[filtros.tipo], remover: { tipo: undefined } })
-  if (filtros.status) ativos.push({ rotulo: rotulosStatus[filtros.status], remover: { status: undefined } })
-  if (filtros.origem) ativos.push({ rotulo: `Origem: ${rotulosOrigem[filtros.origem]}`, remover: { origem: undefined } })
-  if (filtros.de) ativos.push({ rotulo: `De ${formatarData(filtros.de)}`, remover: { de: undefined } })
-  if (filtros.ate) ativos.push({ rotulo: `Até ${formatarData(filtros.ate)}`, remover: { ate: undefined } })
+  if (filtros.status)
+    ativos.push({ rotulo: rotulosStatus[filtros.status], remover: { status: undefined } })
+  if (filtros.origem)
+    ativos.push({
+      rotulo: `Origem: ${rotulosOrigem[filtros.origem]}`,
+      remover: { origem: undefined },
+    })
+  if (filtros.de)
+    ativos.push({ rotulo: `De ${formatarData(filtros.de)}`, remover: { de: undefined } })
+  if (filtros.ate)
+    ativos.push({ rotulo: `Até ${formatarData(filtros.ate)}`, remover: { ate: undefined } })
   if (filtros.premiadas) ativos.push({ rotulo: 'Só premiadas', remover: { premiadas: undefined } })
-  if (filtros.concurso) ativos.push({ rotulo: `Concurso ${filtros.concurso}`, remover: { concurso: undefined } })
+  if (filtros.concurso)
+    ativos.push({ rotulo: `Concurso ${filtros.concurso}`, remover: { concurso: undefined } })
 
   return (
     <>
@@ -215,7 +291,8 @@ export function ApostasListaPage() {
           onAbertoChange={setFiltrosAbertos}
           gatilho={
             <Button variant="outline">
-              <SlidersHorizontal aria-hidden="true" /> Filtros{ativos.length > 0 && ` (${ativos.length})`}
+              <SlidersHorizontal aria-hidden="true" /> Filtros
+              {ativos.length > 0 && ` (${ativos.length})`}
             </Button>
           }
         >
@@ -237,7 +314,12 @@ export function ApostasListaPage() {
         <ul className="mb-4 flex flex-wrap gap-2" aria-label="Filtros ativos">
           {ativos.map((f) => (
             <li key={f.rotulo}>
-              <Button variant="secondary" size="sm" onClick={() => aplicar({ ...filtros, ...f.remover })} aria-label={`Remover filtro ${f.rotulo}`}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => aplicar({ ...filtros, ...f.remover })}
+                aria-label={`Remover filtro ${f.rotulo}`}
+              >
                 {f.rotulo} <X aria-hidden="true" />
               </Button>
             </li>
@@ -246,11 +328,19 @@ export function ApostasListaPage() {
       )}
 
       {selecionando && (
-        <div className="sticky top-16 z-10 mb-4 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2" role="toolbar" aria-label="Ações em massa">
+        <div
+          className="sticky top-16 z-10 mb-4 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2"
+          role="toolbar"
+          aria-label="Ações em massa"
+        >
           <span className="px-2 text-sm font-medium" aria-live="polite">
             {selecionadas.size} selecionada{selecionadas.size === 1 ? '' : 's'}
           </span>
-          <Button variant="ghost" size="sm" onClick={() => setSelecionadas(new Set(apostas.map((a) => a.id!)))}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelecionadas(new Set(apostas.map((a) => a.id!)))}
+          >
             Todas
           </Button>
           <span className="flex-1" />
@@ -292,10 +382,17 @@ export function ApostasListaPage() {
         <EmptyState
           icone={Ticket}
           titulo={ativos.length ? 'Nenhuma aposta com esses filtros' : 'Nenhuma aposta ainda'}
-          descricao={ativos.length ? 'Tente remover algum filtro.' : 'Registre sua primeira aposta para acompanhar gastos e resultados.'}
+          descricao={
+            ativos.length
+              ? 'Tente remover algum filtro.'
+              : 'Registre sua primeira aposta para acompanhar gastos e resultados.'
+          }
           acao={
             ativos.length ? (
-              <Button variant="outline" onClick={() => aplicar({ ordem: filtros.ordem, direcao: filtros.direcao })}>
+              <Button
+                variant="outline"
+                onClick={() => aplicar({ ordem: filtros.ordem, direcao: filtros.direcao })}
+              >
                 Limpar filtros
               </Button>
             ) : (
@@ -333,7 +430,11 @@ export function ApostasListaPage() {
 
       <div ref={sentinela} className="flex justify-center py-6">
         {consulta.hasNextPage && (
-          <Button variant="outline" onClick={() => void consulta.fetchNextPage()} disabled={consulta.isFetchingNextPage}>
+          <Button
+            variant="outline"
+            onClick={() => void consulta.fetchNextPage()}
+            disabled={consulta.isFetchingNextPage}
+          >
             {consulta.isFetchingNextPage && <Loader2 className="animate-spin" aria-hidden="true" />}
             Carregar mais
           </Button>

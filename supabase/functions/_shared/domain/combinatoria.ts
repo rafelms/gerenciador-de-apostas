@@ -9,7 +9,8 @@ export function combinacao(n: number, k: number): number {
   for (let i = 1; i <= kk; i++) {
     resultado = (resultado * BigInt(n - kk + i)) / BigInt(i)
   }
-  if (resultado > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error(`C(${n}, ${k}) excede o inteiro seguro`)
+  if (resultado > BigInt(Number.MAX_SAFE_INTEGER))
+    throw new Error(`C(${n}, ${k}) excede o inteiro seguro`)
   return Number(resultado)
 }
 

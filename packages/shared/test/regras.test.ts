@@ -51,8 +51,12 @@ describe('validarJogo', () => {
   })
 
   it('quantidade fora do limite (mensagem do exemplo da spec)', () => {
-    expect(regras.megasena.validarJogo([1, 2, 3, 4, 5])).toContain('Mega-Sena aceita de 6 a 20 dezenas; encontradas 5')
-    expect(regras.lotofacil.validarJogo(Array.from({ length: 21 }, (_, i) => i + 1))[0]).toMatch(/de 15 a 20/)
+    expect(regras.megasena.validarJogo([1, 2, 3, 4, 5])).toContain(
+      'Mega-Sena aceita de 6 a 20 dezenas; encontradas 5',
+    )
+    expect(regras.lotofacil.validarJogo(Array.from({ length: 21 }, (_, i) => i + 1))[0]).toMatch(
+      /de 15 a 20/,
+    )
   })
 
   it('dezena fora do universo e repetida', () => {

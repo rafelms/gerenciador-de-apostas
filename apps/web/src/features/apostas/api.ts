@@ -23,7 +23,11 @@ export interface FiltrosApostas {
   direcao: 'asc' | 'desc'
 }
 
-const colunaOrdem = { data: 'data_aposta', valor: 'valor_pago_centavos', saldo: 'saldo_centavos' } as const
+const colunaOrdem = {
+  data: 'data_aposta',
+  valor: 'valor_pago_centavos',
+  saldo: 'saldo_centavos',
+} as const
 
 /** Uma página da lista de apostas (paginação por faixa, 20 por vez). */
 export async function listarApostas(filtros: FiltrosApostas, pagina: number) {
@@ -35,7 +39,8 @@ export async function listarApostas(filtros: FiltrosApostas, pagina: number) {
   if (filtros.de) q = q.gte('data_aposta', filtros.de)
   if (filtros.ate) q = q.lte('data_aposta', filtros.ate)
   if (filtros.premiadas) q = q.eq('status', 'premiada')
-  if (filtros.concurso) q = q.lte('concurso_inicial', filtros.concurso).gte('concurso_final', filtros.concurso)
+  if (filtros.concurso)
+    q = q.lte('concurso_inicial', filtros.concurso).gte('concurso_final', filtros.concurso)
 
   const inicio = pagina * TAMANHO_PAGINA
   const { data, error } = await q
@@ -109,6 +114,15 @@ export async function buscarConcurso(modalidadeId: number, numero: number) {
 
 /** As mensagens dos triggers já são em PT-BR e amigáveis; o resto vira mensagem genérica. */
 function mensagemDoBanco(mensagem: string) {
-  const amigaveis = [/dezenas/i, /cotas/i, /bolão/i, /divisão/i, /modalidade/i, /aposta não encontrada/i]
-  return amigaveis.some((r) => r.test(mensagem)) ? mensagem : 'Não foi possível salvar a aposta. Confira os dados.'
+  const amigaveis = [
+    /dezenas/i,
+    /cotas/i,
+    /bolão/i,
+    /divisão/i,
+    /modalidade/i,
+    /aposta não encontrada/i,
+  ]
+  return amigaveis.some((r) => r.test(mensagem))
+    ? mensagem
+    : 'Não foi possível salvar a aposta. Confira os dados.'
 }

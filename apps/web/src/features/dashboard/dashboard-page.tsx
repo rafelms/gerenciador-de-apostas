@@ -2,7 +2,17 @@ import { useQuery } from '@tanstack/react-query'
 import { endOfMonth, format, startOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toZonedTime } from 'date-fns-tz'
-import { ArrowDownRight, ArrowUpRight, Hash, Percent, Plus, RefreshCw, Ticket, Trophy, Wallet } from 'lucide-react'
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Hash,
+  Percent,
+  Plus,
+  RefreshCw,
+  Ticket,
+  Trophy,
+  Wallet,
+} from 'lucide-react'
 import { Link } from 'react-router'
 
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
@@ -28,8 +38,14 @@ export function DashboardPage() {
   const fim = format(endOfMonth(agora), 'yyyy-MM-dd')
   const nomeMes = format(agora, "MMMM 'de' yyyy", { locale: ptBR })
 
-  const totais = useQuery({ queryKey: chaves.resumoPeriodo(inicio, fim), queryFn: () => carregarTotais(inicio, fim) })
-  const ultimas = useQuery({ queryKey: [...chaves.apostas, 'ultimas'], queryFn: () => ultimasApostas(5) })
+  const totais = useQuery({
+    queryKey: chaves.resumoPeriodo(inicio, fim),
+    queryFn: () => carregarTotais(inicio, fim),
+  })
+  const ultimas = useQuery({
+    queryKey: [...chaves.apostas, 'ultimas'],
+    queryFn: () => ultimasApostas(5),
+  })
   const primeiroNome = perfil?.nome.split(' ')[0]
 
   return (
@@ -70,7 +86,12 @@ export function DashboardPage() {
         )}
         {totais.data && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            <KpiCard titulo="Gasto" icone={Wallet} valor={<MoneyText centavos={totais.data.gasto} />} detalhe="Sua parte nas apostas" />
+            <KpiCard
+              titulo="Gasto"
+              icone={Wallet}
+              valor={<MoneyText centavos={totais.data.gasto} />}
+              detalhe="Sua parte nas apostas"
+            />
             <KpiCard
               titulo="Recuperado"
               icone={Trophy}
@@ -82,8 +103,17 @@ export function DashboardPage() {
               icone={totais.data.saldo >= 0 ? ArrowUpRight : ArrowDownRight}
               valor={<MoneyText centavos={totais.data.saldo} comSinal />}
             />
-            <KpiCard titulo="ROI" icone={Percent} valor={porcentagem(totais.data.roi)} detalhe="Saldo ÷ gasto" />
-            <KpiCard titulo="Apostas" icone={Hash} valor={totais.data.qtdApostas.toLocaleString('pt-BR')} />
+            <KpiCard
+              titulo="ROI"
+              icone={Percent}
+              valor={porcentagem(totais.data.roi)}
+              detalhe="Saldo ÷ gasto"
+            />
+            <KpiCard
+              titulo="Apostas"
+              icone={Hash}
+              valor={totais.data.qtdApostas.toLocaleString('pt-BR')}
+            />
             <KpiCard
               titulo="Premiadas"
               icone={Trophy}

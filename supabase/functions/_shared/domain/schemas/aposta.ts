@@ -17,7 +17,11 @@ export const participanteSchema = z.object({
 })
 
 export const bolaoSchema = z.object({
-  totalCotas: z.number().int().min(2, 'O bolão tem pelo menos 2 cotas.').max(100, 'Máximo de 100 cotas.'),
+  totalCotas: z
+    .number()
+    .int()
+    .min(2, 'O bolão tem pelo menos 2 cotas.')
+    .max(100, 'Máximo de 100 cotas.'),
   cotasUsuario: z.number().int().min(1, 'Informe pelo menos 1 cota.'),
   numeroCota: z.number().int().min(1).nullable().optional(),
   valorCotaCentavos: centavos.positive('Informe o valor da cota.'),
@@ -45,10 +49,18 @@ export const apostaSchema = z
   .superRefine((a, ctx) => {
     // Teimosinha ⇔ mais de um concurso (mesma regra da constraint teimosinha_qtd).
     if (a.tipo === 'teimosinha' && a.qtdConcursos < 2) {
-      ctx.addIssue({ code: 'custom', path: ['qtdConcursos'], message: 'A teimosinha precisa de 2 a 24 concursos.' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['qtdConcursos'],
+        message: 'A teimosinha precisa de 2 a 24 concursos.',
+      })
     }
     if (a.tipo !== 'teimosinha' && a.qtdConcursos !== 1) {
-      ctx.addIssue({ code: 'custom', path: ['qtdConcursos'], message: 'Só a teimosinha vale para mais de um concurso.' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['qtdConcursos'],
+        message: 'Só a teimosinha vale para mais de um concurso.',
+      })
     }
 
     const regra = obterRegra(a.modalidadeSlug)
@@ -64,38 +76,70 @@ export const apostaSchema = z
       } else {
         const b = a.bolao
         if (b.cotasUsuario > b.totalCotas) {
-          ctx.addIssue({ code: 'custom', path: ['bolao', 'cotasUsuario'], message: 'Suas cotas não podem passar do total.' })
+          ctx.addIssue({
+            code: 'custom',
+            path: ['bolao', 'cotasUsuario'],
+            message: 'Suas cotas não podem passar do total.',
+          })
         }
         if (b.numeroCota && b.numeroCota > b.totalCotas) {
-          ctx.addIssue({ code: 'custom', path: ['bolao', 'numeroCota'], message: 'O número da cota não pode passar do total.' })
+          ctx.addIssue({
+            code: 'custom',
+            path: ['bolao', 'numeroCota'],
+            message: 'O número da cota não pode passar do total.',
+          })
         }
         if (!tarifaDentroDoLimite(b.tarifaCentavos, b.valorCotaCentavos)) {
-          ctx.addIssue({ code: 'custom', path: ['bolao', 'tarifaCentavos'], message: 'A tarifa passa de 35% do valor da cota.' })
+          ctx.addIssue({
+            code: 'custom',
+            path: ['bolao', 'tarifaCentavos'],
+            message: 'A tarifa passa de 35% do valor da cota.',
+          })
         }
       }
       // Regra do bolão CAIXA: todos os jogos com a mesma quantidade de dezenas.
       if (new Set(a.jogos.map((j) => j.length)).size > 1) {
-        ctx.addIssue({ code: 'custom', path: ['jogos'], message: 'No bolão, todos os jogos têm a mesma quantidade de dezenas.' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['jogos'],
+          message: 'No bolão, todos os jogos têm a mesma quantidade de dezenas.',
+        })
       }
     } else if (a.bolao) {
-      ctx.addIssue({ code: 'custom', path: ['bolao'], message: 'Dados de bolão só valem para o tipo bolão.' })
+      ctx.addIssue({
+        code: 'custom',
+        path: ['bolao'],
+        message: 'Dados de bolão só valem para o tipo bolão.',
+      })
     }
 
     if (a.participantes.length > 0) {
       const usuarios = a.participantes.filter((p) => p.ehUsuario).length
       if (usuarios !== 1) {
-        ctx.addIssue({ code: 'custom', path: ['participantes'], message: 'A divisão precisa incluir você exatamente uma vez.' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['participantes'],
+          message: 'A divisão precisa incluir você exatamente uma vez.',
+        })
       }
       const contribuicoes = a.participantes.map((p) => p.contribuicaoCentavos)
       const algumas = contribuicoes.some((c) => c !== null && c !== undefined)
       const todas = contribuicoes.every((c) => c !== null && c !== undefined)
       if (algumas && !todas) {
-        ctx.addIssue({ code: 'custom', path: ['participantes'], message: 'Informe a contribuição de todos ou de ninguém.' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['participantes'],
+          message: 'Informe a contribuição de todos ou de ninguém.',
+        })
       }
       if (todas) {
         const soma = contribuicoes.reduce<number>((s, c) => s + (c ?? 0), 0)
         if (soma !== a.valorPagoCentavos) {
-          ctx.addIssue({ code: 'custom', path: ['participantes'], message: 'A soma das contribuições precisa ser igual ao valor pago.' })
+          ctx.addIssue({
+            code: 'custom',
+            path: ['participantes'],
+            message: 'A soma das contribuições precisa ser igual ao valor pago.',
+          })
         }
       }
     }
@@ -107,7 +151,10 @@ export type ApostaInput = z.infer<typeof apostaSchema>
  * Aposta validada → corpo da RPC `salvar_aposta` (snake_case, colunas do banco).
  * Usado pelo formulário e, na fase 3, pela importação de planilha/PDF.
  */
-export function apostaParaRpc(a: ApostaInput, extras: { origem?: 'manual' | 'excel' | 'pdf'; comprovanteHash?: string | null } = {}) {
+export function apostaParaRpc(
+  a: ApostaInput,
+  extras: { origem?: 'manual' | 'excel' | 'pdf'; comprovanteHash?: string | null } = {},
+) {
   return {
     modalidade_slug: a.modalidadeSlug,
     tipo: a.tipo,

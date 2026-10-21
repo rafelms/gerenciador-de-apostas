@@ -4,7 +4,8 @@
 export type Centavos = number
 
 function exigirInteiro(valor: number, nome: string) {
-  if (!Number.isSafeInteger(valor)) throw new Error(`${nome} precisa ser um inteiro (centavos): ${valor}`)
+  if (!Number.isSafeInteger(valor))
+    throw new Error(`${nome} precisa ser um inteiro (centavos): ${valor}`)
 }
 
 /**
@@ -27,7 +28,8 @@ export function deReais(texto: string | number): Centavos {
   let inteiro: string
   let decimal = ''
   if (semSinal.includes(',')) {
-    if (!/^\d{1,3}(\.\d{3})*,\d{1,2}$|^\d+,\d{1,2}$/.test(semSinal)) throw new Error(`Valor inválido: ${texto}`)
+    if (!/^\d{1,3}(\.\d{3})*,\d{1,2}$|^\d+,\d{1,2}$/.test(semSinal))
+      throw new Error(`Valor inválido: ${texto}`)
     ;[inteiro = '', decimal = ''] = semSinal.split(',')
     inteiro = inteiro.replaceAll('.', '')
   } else if (/^\d+\.\d{1,2}$/.test(semSinal)) {
@@ -76,7 +78,11 @@ export function arredondarHalfUp(valor: number): number {
  * Calcula (valor × numerador ÷ denominador) com arredondamento half-up EXATO,
  * usando BigInt (sem erro de ponto flutuante). Base de IR, cotas e frações.
  */
-export function multiplicarFracao(valor: Centavos, numerador: number, denominador: number): Centavos {
+export function multiplicarFracao(
+  valor: Centavos,
+  numerador: number,
+  denominador: number,
+): Centavos {
   exigirInteiro(valor, 'valor')
   exigirInteiro(numerador, 'numerador')
   exigirInteiro(denominador, 'denominador')
@@ -124,7 +130,9 @@ export function ratearMaiorResto(total: Centavos, pesos: number[]): Centavos[] {
   }))
 
   let sobra = t - partes.reduce((a, p) => a + p.parte, 0n)
-  const ordemDeResto = [...partes].sort((a, b) => (a.resto === b.resto ? a.indice - b.indice : a.resto > b.resto ? -1 : 1))
+  const ordemDeResto = [...partes].sort((a, b) =>
+    a.resto === b.resto ? a.indice - b.indice : a.resto > b.resto ? -1 : 1,
+  )
   for (const p of ordemDeResto) {
     if (sobra === 0n) break
     p.parte += 1n
@@ -146,14 +154,19 @@ export interface ParticipanteFracao {
  *   - senão: peso do usuário ÷ soma dos pesos
  * Sem participantes, o usuário pagou tudo.
  */
-export function calcularGastoUsuario(valorPago: Centavos, participantes: ParticipanteFracao[]): Centavos {
+export function calcularGastoUsuario(
+  valorPago: Centavos,
+  participantes: ParticipanteFracao[],
+): Centavos {
   exigirInteiro(valorPago, 'valorPago')
   if (participantes.length === 0) return valorPago
 
   const usuario = participantes.find((p) => p.ehUsuario)
   if (!usuario) throw new Error('A divisão precisa incluir o próprio usuário')
 
-  const temContribuicoes = participantes.every((p) => p.contribuicaoCentavos !== null && p.contribuicaoCentavos !== undefined)
+  const temContribuicoes = participantes.every(
+    (p) => p.contribuicaoCentavos !== null && p.contribuicaoCentavos !== undefined,
+  )
   if (temContribuicoes && valorPago > 0) {
     // A própria contribuição do usuário já é a parte dele no gasto.
     return usuario.contribuicaoCentavos as Centavos

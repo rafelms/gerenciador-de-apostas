@@ -19,7 +19,13 @@ const tipos = [
   { valor: 'teimosinha', rotulo: 'Teimosinha', descricao: 'Vários concursos', icone: Repeat },
 ] as const
 
-export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalidade | undefined; edicao: boolean }) {
+export function SecaoTipoConcurso({
+  modalidade,
+  edicao,
+}: {
+  modalidade: Modalidade | undefined
+  edicao: boolean
+}) {
   const { watch, setValue, register, getValues, formState } = useFormContext<FormAposta>()
   const tipo = watch('tipo')
   const erros = formState.errors
@@ -33,12 +39,14 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
 
   // Preenche o próximo concurso automaticamente numa aposta nova.
   useEffect(() => {
-    if (!edicao && sugestao && !getValues('concursoInicial')) setValue('concursoInicial', String(sugestao))
+    if (!edicao && sugestao && !getValues('concursoInicial'))
+      setValue('concursoInicial', String(sugestao))
   }, [edicao, sugestao, getValues, setValue])
 
   function escolherTipo(novo: FormAposta['tipo']) {
     setValue('tipo', novo)
-    if (novo === 'teimosinha' && Number(getValues('qtdConcursos')) < 2) setValue('qtdConcursos', '2')
+    if (novo === 'teimosinha' && Number(getValues('qtdConcursos')) < 2)
+      setValue('qtdConcursos', '2')
     if (novo !== 'teimosinha') setValue('qtdConcursos', '1')
   }
 
@@ -56,12 +64,18 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
               onClick={() => escolherTipo(valor)}
               className={cn(
                 'flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border p-2 text-center transition-colors duration-150',
-                tipo === valor ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-accent',
+                tipo === valor
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'bg-card hover:bg-accent',
               )}
             >
               <Icone className="size-5" aria-hidden="true" />
               <span className="text-sm font-semibold">{rotulo}</span>
-              <span className={cn('text-xs', tipo === valor ? 'opacity-90' : 'text-muted-foreground')}>{descricao}</span>
+              <span
+                className={cn('text-xs', tipo === valor ? 'opacity-90' : 'text-muted-foreground')}
+              >
+                {descricao}
+              </span>
             </button>
           ))}
         </div>
@@ -77,7 +91,13 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
                 Próximo: {sugestao}
                 {ultimo.data.data_proximo && ` (sorteio ${formatarData(ultimo.data.data_proximo)})`}
                 {watch('concursoInicial') !== String(sugestao) && (
-                  <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => setValue('concursoInicial', String(sugestao))}>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0"
+                    onClick={() => setValue('concursoInicial', String(sugestao))}
+                  >
                     Usar
                   </Button>
                 )}
@@ -89,8 +109,18 @@ export function SecaoTipoConcurso({ modalidade, edicao }: { modalidade: Modalida
         </Campo>
 
         {tipo === 'teimosinha' && (
-          <Campo label="Quantidade de concursos" erro={erros.qtdConcursos?.message} ajuda="De 2 a 24 concursos seguidos.">
-            <Input type="number" inputMode="numeric" min={2} max={24} {...register('qtdConcursos')} />
+          <Campo
+            label="Quantidade de concursos"
+            erro={erros.qtdConcursos?.message}
+            ajuda="De 2 a 24 concursos seguidos."
+          >
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={2}
+              max={24}
+              {...register('qtdConcursos')}
+            />
           </Campo>
         )}
       </div>

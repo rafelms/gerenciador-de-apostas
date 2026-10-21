@@ -13,17 +13,29 @@ interface ModalidadeChipProps extends Omit<ComponentProps<'button'>, 'children'>
  * Chip da modalidade. A cor da modalidade aparece só no detalhe (bolinha/borda),
  * nunca como fundo de área grande (seção 12.2).
  */
-export function ModalidadeChip({ nome, cor, selecionado, className, ...props }: ModalidadeChipProps) {
+export function ModalidadeChip({
+  nome,
+  cor,
+  selecionado,
+  className,
+  ...props
+}: ModalidadeChipProps) {
   const conteudo = (
     <>
-      <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: cor }} aria-hidden="true" />
+      <span
+        className="size-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: cor }}
+        aria-hidden="true"
+      />
       {nome}
     </>
   )
 
   if (selecionado === undefined) {
     return (
-      <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', className)}>{conteudo}</span>
+      <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', className)}>
+        {conteudo}
+      </span>
     )
   }
 

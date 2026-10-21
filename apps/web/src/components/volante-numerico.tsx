@@ -19,7 +19,13 @@ interface VolanteNumericoProps {
  * 5 colunas no celular (alvos ≥ 44px a 360px) e 10 a partir de `sm`.
  * Mostra o contador "7/6–20" e o custo do jogo em tempo real.
  */
-export function VolanteNumerico({ regra, selecionadas, onChange, precoSimples, rotulo = 'Volante' }: VolanteNumericoProps) {
+export function VolanteNumerico({
+  regra,
+  selecionadas,
+  onChange,
+  precoSimples,
+  rotulo = 'Volante',
+}: VolanteNumericoProps) {
   const marcadas = new Set(selecionadas)
   const qtd = marcadas.size
   const noLimite = qtd >= regra.maxMarcadas
@@ -34,7 +40,10 @@ export function VolanteNumerico({ regra, selecionadas, onChange, precoSimples, r
     }
   }
 
-  const numeros = Array.from({ length: regra.universoMax - regra.universoMin + 1 }, (_, i) => regra.universoMin + i)
+  const numeros = Array.from(
+    { length: regra.universoMax - regra.universoMin + 1 },
+    (_, i) => regra.universoMin + i,
+  )
 
   return (
     <div className="grid gap-3">
@@ -51,7 +60,13 @@ export function VolanteNumerico({ regra, selecionadas, onChange, precoSimples, r
             </>
           )}
         </p>
-        <Button type="button" variant="ghost" size="sm" onClick={() => onChange([])} disabled={qtd === 0}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onChange([])}
+          disabled={qtd === 0}
+        >
           <Eraser aria-hidden="true" /> Limpar
         </Button>
       </div>

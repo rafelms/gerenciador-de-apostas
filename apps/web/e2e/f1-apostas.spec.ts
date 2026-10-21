@@ -1,6 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { admin, criarUsuario, entrarPelaTela, limparUsuariosDeTeste, semRolagemHorizontal } from './helpers'
+import {
+  admin,
+  criarUsuario,
+  entrarPelaTela,
+  limparUsuariosDeTeste,
+  semRolagemHorizontal,
+} from './helpers'
 
 test.afterAll(async () => {
   await limparUsuariosDeTeste()
@@ -13,12 +19,17 @@ async function proximaEtapa(page: Page, ehMobile: boolean) {
 
 async function marcar(page: Page, dezenas: number[]) {
   for (const d of dezenas) {
-    await page.getByRole('button', { name: `Dezena ${String(d).padStart(2, '0')}`, exact: true }).first().click()
+    await page
+      .getByRole('button', { name: `Dezena ${String(d).padStart(2, '0')}`, exact: true })
+      .first()
+      .click()
   }
 }
 
 test.describe('Aceite F1', () => {
-  test('aposta simples de Mega com 7 dezenas custa R$ 42,00 e aparece na lista e no detalhe', async ({ page }, info) => {
+  test('aposta simples de Mega com 7 dezenas custa R$ 42,00 e aparece na lista e no detalhe', async ({
+    page,
+  }, info) => {
     const mobile = info.project.name === 'mobile'
     const { email } = await criarUsuario('membro')
     await entrarPelaTela(page, email)
@@ -34,7 +45,9 @@ test.describe('Aceite F1', () => {
 
     await marcar(page, [2, 9, 24, 28, 44, 48, 49])
     await expect(page.getByText('7/6–20')).toBeVisible()
-    await expect(page.getByRole('group', { name: 'Volante do jogo 1' }).locator('..').getByText('R$ 42,00')).toBeVisible()
+    await expect(
+      page.getByRole('group', { name: 'Volante do jogo 1' }).locator('..').getByText('R$ 42,00'),
+    ).toBeVisible()
     await semRolagemHorizontal(page)
     await proximaEtapa(page, mobile)
 
@@ -49,7 +62,9 @@ test.describe('Aceite F1', () => {
 
     await page.goto('/apostas')
     await expect(page.getByRole('link', { name: 'Mega-Sena 3070' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Mega-Sena 3070' }).getByText('R$ 42,00')).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Mega-Sena 3070' }).getByText('R$ 42,00'),
+    ).toBeVisible()
   })
 
   test('bolão do Apêndice A salva R$ 8,84 + R$ 3,09 = R$ 11,93', async ({ page }, info) => {
@@ -67,18 +82,20 @@ test.describe('Aceite F1', () => {
 
     // Cola os 8 jogos de uma vez, no formato do comprovante.
     await page.getByRole('button', { name: 'Colar dezenas' }).click()
-    await page.getByLabel('Jogos').fill(
-      [
-        '02 | 09 | 24 | 28 | 44 | 48 | 49',
-        '02 | 06 | 28 | 41 | 44 | 49 | 53',
-        '02 | 15 | 19 | 28 | 44 | 49 | 50',
-        '12 | 14 | 36 | 38 | 44 | 51 | 56',
-        '04 | 06 | 08 | 18 | 25 | 30 | 41',
-        '03 | 06 | 11 | 18 | 30 | 47 | 56',
-        '06 | 13 | 16 | 25 | 26 | 28 | 49',
-        '02 | 14 | 22 | 24 | 35 | 45 | 48',
-      ].join('\n'),
-    )
+    await page
+      .getByLabel('Jogos')
+      .fill(
+        [
+          '02 | 09 | 24 | 28 | 44 | 48 | 49',
+          '02 | 06 | 28 | 41 | 44 | 49 | 53',
+          '02 | 15 | 19 | 28 | 44 | 49 | 50',
+          '12 | 14 | 36 | 38 | 44 | 51 | 56',
+          '04 | 06 | 08 | 18 | 25 | 30 | 41',
+          '03 | 06 | 11 | 18 | 30 | 47 | 56',
+          '06 | 13 | 16 | 25 | 26 | 28 | 49',
+          '02 | 14 | 22 | 24 | 35 | 45 | 48',
+        ].join('\n'),
+      )
     await page.getByRole('button', { name: 'Adicionar jogos' }).click()
     await expect(page.getByText('Jogo 8', { exact: true })).toBeVisible()
     await proximaEtapa(page, mobile)
@@ -99,7 +116,9 @@ test.describe('Aceite F1', () => {
 
     const { data } = await admin
       .from('apostas')
-      .select('valor_cota_centavos, tarifa_centavos, valor_pago_centavos, bolao_total_cotas, bolao_numero_cota')
+      .select(
+        'valor_cota_centavos, tarifa_centavos, valor_pago_centavos, bolao_total_cotas, bolao_numero_cota',
+      )
       .eq('id', page.url().split('/').at(-1)!)
       .single()
     expect(data).toEqual({
@@ -132,7 +151,11 @@ test.describe('Aceite F1', () => {
     await expect(page).toHaveURL(/\/apostas\/[0-9a-f-]{36}$/)
 
     const id = page.url().split('/').at(-1)!
-    const { data } = await admin.from('aposta_concursos').select('numero_concurso').eq('aposta_id', id).order('numero_concurso')
+    const { data } = await admin
+      .from('aposta_concursos')
+      .select('numero_concurso')
+      .eq('aposta_id', id)
+      .order('numero_concurso')
     expect(data?.map((d) => d.numero_concurso)).toEqual([3521, 3522, 3523])
   })
 
@@ -149,10 +172,14 @@ test.describe('Aceite F1', () => {
     await marcar(page, [1, 2, 3])
     if (mobile) {
       await page.getByRole('button', { name: 'Próximo' }).click()
-      await expect(page.getByText('Jogo 1: Quina aceita de 5 a 15 dezenas; encontradas 3')).toBeVisible()
+      await expect(
+        page.getByText('Jogo 1: Quina aceita de 5 a 15 dezenas; encontradas 3'),
+      ).toBeVisible()
     } else {
       await page.getByRole('button', { name: 'Registrar aposta' }).click()
-      await expect(page.getByText('Jogo 1: Quina aceita de 5 a 15 dezenas; encontradas 3')).toBeVisible()
+      await expect(
+        page.getByText('Jogo 1: Quina aceita de 5 a 15 dezenas; encontradas 3'),
+      ).toBeVisible()
     }
     await expect(page).toHaveURL('/apostas/nova')
   })
@@ -167,7 +194,14 @@ test.describe('Aceite F1', () => {
       const { data: m } = await admin.from('modalidades').select('id').eq('slug', slug).single()
       const { data: a } = await admin
         .from('apostas')
-        .insert({ user_id: id, modalidade_id: m!.id, tipo, concurso_inicial: numero, data_aposta: '2026-10-14', valor_pago_centavos: 600 })
+        .insert({
+          user_id: id,
+          modalidade_id: m!.id,
+          tipo,
+          concurso_inicial: numero,
+          data_aposta: '2026-10-14',
+          valor_pago_centavos: 600,
+        })
         .select('id')
         .single()
       await admin.from('aposta_jogos').insert({
@@ -215,10 +249,19 @@ test.describe('Aceite F1', () => {
     const { id, email } = await criarUsuario('membro')
     const { data: a } = await admin
       .from('apostas')
-      .insert({ user_id: id, modalidade_id: 1, tipo: 'simples', concurso_inicial: 3069, data_aposta: '2026-10-10', valor_pago_centavos: 600 })
+      .insert({
+        user_id: id,
+        modalidade_id: 1,
+        tipo: 'simples',
+        concurso_inicial: 3069,
+        data_aposta: '2026-10-10',
+        valor_pago_centavos: 600,
+      })
       .select('id')
       .single()
-    await admin.from('aposta_jogos').insert({ aposta_id: a!.id, user_id: id, ordem: 1, dezenas: [3, 17, 22, 31, 40, 59] })
+    await admin
+      .from('aposta_jogos')
+      .insert({ aposta_id: a!.id, user_id: id, ordem: 1, dezenas: [3, 17, 22, 31, 40, 59] })
 
     await entrarPelaTela(page, email)
     await expect(page).toHaveURL('/')
@@ -229,7 +272,9 @@ test.describe('Aceite F1', () => {
     await expect(page.getByText('· 6 dezenas · 5 acertos')).toBeVisible()
 
     await page.getByRole('button', { name: 'Excluir' }).click()
-    await expect(page.getByRole('alertdialog', { name: 'Excluir a aposta Mega-Sena 3069?' })).toBeVisible()
+    await expect(
+      page.getByRole('alertdialog', { name: 'Excluir a aposta Mega-Sena 3069?' }),
+    ).toBeVisible()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Excluir' }).click()
     await expect(page).toHaveURL('/apostas')
     await expect(page.getByText('Nenhuma aposta ainda')).toBeVisible()
@@ -240,14 +285,25 @@ test.describe('Aceite F1', () => {
     const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
     const { data: a } = await admin
       .from('apostas')
-      .insert({ user_id: id, modalidade_id: 1, tipo: 'simples', concurso_inicial: 3070, data_aposta: hoje, valor_pago_centavos: 4200 })
+      .insert({
+        user_id: id,
+        modalidade_id: 1,
+        tipo: 'simples',
+        concurso_inicial: 3070,
+        data_aposta: hoje,
+        valor_pago_centavos: 4200,
+      })
       .select('id')
       .single()
-    await admin.from('aposta_jogos').insert({ aposta_id: a!.id, user_id: id, ordem: 1, dezenas: [1, 2, 3, 4, 5, 6, 7] })
+    await admin
+      .from('aposta_jogos')
+      .insert({ aposta_id: a!.id, user_id: id, ordem: 1, dezenas: [1, 2, 3, 4, 5, 6, 7] })
 
     await entrarPelaTela(page, email)
     await expect(page).toHaveURL('/')
-    const gasto = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Gasto' }) })
+    const gasto = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: 'Gasto' }) })
     await expect(gasto.getByText('R$ 42,00')).toBeVisible()
     await expect(page.getByRole('link', { name: 'Mega-Sena 3070' })).toBeVisible()
     await semRolagemHorizontal(page)

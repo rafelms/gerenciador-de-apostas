@@ -56,7 +56,8 @@ export function valoresIniciais(): FormAposta {
   }
 }
 
-const reais = (c: number | null | undefined) => (c === null || c === undefined ? '' : formatarBRL(c).replace('R$ ', ''))
+const reais = (c: number | null | undefined) =>
+  c === null || c === undefined ? '' : formatarBRL(c).replace('R$ ', '')
 
 export function apostaParaForm(a: ApostaCompleta): FormAposta {
   return {
@@ -73,7 +74,11 @@ export function apostaParaForm(a: ApostaCompleta): FormAposta {
     valorPago: reais(a.valor_pago_centavos),
     valorPagoManual: true,
     dividir: a.participantes.length > 0,
-    participantes: a.participantes.map((p) => ({ nome: p.nome, peso: String(p.peso).replace('.', ','), ehUsuario: p.eh_usuario })),
+    participantes: a.participantes.map((p) => ({
+      nome: p.nome,
+      peso: String(p.peso).replace('.', ','),
+      ehUsuario: p.eh_usuario,
+    })),
     dataAposta: a.data_aposta,
     localCompra: a.local_compra ?? '',
     observacao: a.observacao ?? '',
@@ -96,7 +101,14 @@ export function valorCalculado(f: FormAposta, modalidade: Modalidade | undefined
   const jogosValidos = f.jogos.filter((j) => modalidade.regra.validarJogo(j.dezenas).length === 0)
   if (!preco || jogosValidos.length !== f.jogos.length) return null
   const qtd = f.tipo === 'teimosinha' ? inteiro(f.qtdConcursos) : 1
-  return Number.isNaN(qtd) ? null : custoAposta(modalidade.regra, f.jogos.map((j) => j.dezenas), preco, qtd)
+  return Number.isNaN(qtd)
+    ? null
+    : custoAposta(
+        modalidade.regra,
+        f.jogos.map((j) => j.dezenas),
+        preco,
+        qtd,
+      )
 }
 
 export function valorPagoEfetivo(f: FormAposta, modalidade: Modalidade | undefined): number | null {
@@ -118,7 +130,13 @@ export function avisos(f: FormAposta, modalidade: Modalidade | undefined): strin
     const preco = precoVigente(modalidade, f.dataAposta)
     const jogos = f.jogos.map((j) => j.dezenas)
     const jogosOk = jogos.every((j) => modalidade.regra.validarJogo(j).length === 0)
-    if (cota && preco && jogosOk && !Number.isNaN(total) && !valorCotaConfere(modalidade.regra, jogos, preco, cota, total)) {
+    if (
+      cota &&
+      preco &&
+      jogosOk &&
+      !Number.isNaN(total) &&
+      !valorCotaConfere(modalidade.regra, jogos, preco, cota, total)
+    ) {
       lista.push('O valor da cota não bate com o preço vigente dos jogos.')
     }
   }
@@ -179,9 +197,13 @@ function definirAninhado(obj: Record<string, unknown>, caminho: string, valor: u
 }
 
 /** Resolver do React Hook Form que valida com o MESMO schema Zod do shared. */
-export function criarResolver(obterModalidade: (slug: string) => Modalidade | undefined): Resolver<FormAposta> {
+export function criarResolver(
+  obterModalidade: (slug: string) => Modalidade | undefined,
+): Resolver<FormAposta> {
   return async (valores) => {
-    const resultado = apostaSchema.safeParse(montarApostaInput(valores, obterModalidade(valores.modalidadeSlug)))
+    const resultado = apostaSchema.safeParse(
+      montarApostaInput(valores, obterModalidade(valores.modalidadeSlug)),
+    )
     if (resultado.success) return { values: valores, errors: {} }
 
     // O React Hook Form espera erros aninhados (jogos[0], jogos.root…).
@@ -190,12 +212,19 @@ export function criarResolver(obterModalidade: (slug: string) => Modalidade | un
       const caminho = issue.path.join('.')
       const campo =
         mapaCampos[caminho] ??
-        (caminho === 'jogos' ? 'jogos.root' : caminho.startsWith('participantes') ? 'participantes' : caminho)
+        (caminho === 'jogos'
+          ? 'jogos.root'
+          : caminho.startsWith('participantes')
+            ? 'participantes'
+            : caminho)
       const mensagem =
-        campo === 'modalidadeSlug' ? 'Escolha a modalidade.' :
-        campo === 'valorPago' && issue.code === 'invalid_type' ? 'Informe o valor pago.' :
-        campo === 'concursoInicial' && issue.code === 'invalid_type' ? 'Informe o número do concurso.' :
-        issue.message
+        campo === 'modalidadeSlug'
+          ? 'Escolha a modalidade.'
+          : campo === 'valorPago' && issue.code === 'invalid_type'
+            ? 'Informe o valor pago.'
+            : campo === 'concursoInicial' && issue.code === 'invalid_type'
+              ? 'Informe o número do concurso.'
+              : issue.message
       definirAninhado(errors, campo, { type: issue.code, message: mensagem })
     }
     return { values: {}, errors: errors as FieldErrors<FormAposta> }

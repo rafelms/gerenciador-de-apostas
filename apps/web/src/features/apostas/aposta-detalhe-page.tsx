@@ -1,7 +1,16 @@
 import { calcularGastoUsuario, ratearMaiorResto } from '@shared/dinheiro.ts'
 import { obterRegra } from '@shared/regras/index.ts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, CheckCircle2, Circle, Pencil, RefreshCw, SearchX, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  CalendarClock,
+  CheckCircle2,
+  Circle,
+  Pencil,
+  RefreshCw,
+  SearchX,
+  Trash2,
+} from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -63,19 +72,23 @@ function Jogos({ aposta }: { aposta: ApostaCompleta }) {
         ) : (
           !concurso.isPending && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CalendarClock className="size-4" aria-hidden="true" /> Aguardando resultado oficial do concurso {aposta.concurso_inicial}.
+              <CalendarClock className="size-4" aria-hidden="true" /> Aguardando resultado oficial
+              do concurso {aposta.concurso_inicial}.
             </p>
           )
         )}
         <ol className="grid gap-3">
           {aposta.aposta_jogos.map((j) => {
-            const acertos = sorteadas ? regra.conferir(j.dezenas, { dezenas: sorteadas }).acertos : null
+            const acertos = sorteadas
+              ? regra.conferir(j.dezenas, { dezenas: sorteadas }).acertos
+              : null
             return (
               <li key={j.ordem} className="grid gap-2">
                 <p className="text-sm font-medium">
                   Jogo {j.ordem}{' '}
                   <span className="text-muted-foreground">
-                    · {j.dezenas.length} dezenas{acertos !== null && ` · ${acertos} ${acertos === 1 ? 'acerto' : 'acertos'}`}
+                    · {j.dezenas.length} dezenas
+                    {acertos !== null && ` · ${acertos} ${acertos === 1 ? 'acerto' : 'acertos'}`}
                   </span>
                 </p>
                 <ListaDezenas dezenas={j.dezenas} sorteadas={sorteadas} />
@@ -99,7 +112,10 @@ function Divisao({ aposta }: { aposta: ApostaCompleta }) {
   const temContribuicoes = participantes.every((p) => p.contribuicaoCentavos !== null)
   const partes = temContribuicoes
     ? participantes.map((p) => p.contribuicaoCentavos!)
-    : ratearMaiorResto(aposta.valor_pago_centavos, participantes.map((p) => p.peso))
+    : ratearMaiorResto(
+        aposta.valor_pago_centavos,
+        participantes.map((p) => p.peso),
+      )
 
   return (
     <Card>
@@ -113,10 +129,18 @@ function Divisao({ aposta }: { aposta: ApostaCompleta }) {
           <caption className="sr-only">Divisão do valor pago entre os participantes</caption>
           <thead>
             <tr className="border-b text-left text-muted-foreground">
-              <th scope="col" className="py-2 font-medium">Participante</th>
-              <th scope="col" className="py-2 text-right font-medium">Peso</th>
-              <th scope="col" className="py-2 text-right font-medium">%</th>
-              <th scope="col" className="py-2 text-right font-medium">Parte do gasto</th>
+              <th scope="col" className="py-2 font-medium">
+                Participante
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                Peso
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                %
+              </th>
+              <th scope="col" className="py-2 text-right font-medium">
+                Parte do gasto
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -137,7 +161,9 @@ function Divisao({ aposta }: { aposta: ApostaCompleta }) {
             ))}
           </tbody>
         </table>
-        <p className="mt-3 text-xs text-muted-foreground">A divisão do prêmio (bruto, IR e líquido) aparece aqui quando a aposta for premiada.</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          A divisão do prêmio (bruto, IR e líquido) aparece aqui quando a aposta for premiada.
+        </p>
       </CardContent>
     </Card>
   )
@@ -148,7 +174,11 @@ function LinhaDoTempo({ aposta }: { aposta: ApostaCompleta }) {
   const passos = [
     { rotulo: 'Registrada', detalhe: formatarDataHora(aposta.created_at), feito: true },
     { rotulo: 'Sorteio', detalhe: `Concurso ${aposta.concurso_inicial}`, feito: conferida },
-    { rotulo: 'Conferida', detalhe: conferida ? 'Concluída' : 'Na fase 2 (conferência automática)', feito: conferida },
+    {
+      rotulo: 'Conferida',
+      detalhe: conferida ? 'Concluída' : 'Na fase 2 (conferência automática)',
+      feito: conferida,
+    },
     { rotulo: 'Resgatada', detalhe: aposta.status === 'premiada' ? 'Pendente' : '—', feito: false },
   ]
   return (
@@ -236,16 +266,26 @@ export function ApostaDetalhePage() {
   }
 
   const nome = a.modalidades?.nome ?? ''
-  const concursos = a.qtd_concursos > 1 ? `${a.concurso_inicial}–${a.concurso_inicial + a.qtd_concursos - 1}` : String(a.concurso_inicial)
+  const concursos =
+    a.qtd_concursos > 1
+      ? `${a.concurso_inicial}–${a.concurso_inicial + a.qtd_concursos - 1}`
+      : String(a.concurso_inicial)
   const gastoUsuario = calcularGastoUsuario(
     a.valor_pago_centavos,
-    a.participantes.map((p) => ({ peso: Number(p.peso), ehUsuario: p.eh_usuario, contribuicaoCentavos: p.contribuicao_centavos })),
+    a.participantes.map((p) => ({
+      peso: Number(p.peso),
+      ehUsuario: p.eh_usuario,
+      contribuicaoCentavos: p.contribuicao_centavos,
+    })),
   )
 
   return (
     <>
       <div className="mb-6 grid gap-3">
-        <Link to="/apostas" className="inline-flex min-h-11 w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          to="/apostas"
+          className="inline-flex min-h-11 w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="size-4" aria-hidden="true" /> Apostas
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -255,7 +295,11 @@ export function ApostaDetalhePage() {
           <StatusBadge status={a.status} />
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <ModalidadeChip nome={nome} cor={a.modalidades?.cor_hex ?? '#6A6F9E'} className="text-foreground" />
+          <ModalidadeChip
+            nome={nome}
+            cor={a.modalidades?.cor_hex ?? '#6A6F9E'}
+            className="text-foreground"
+          />
           <span>· {rotulosTipo[a.tipo]}</span>
           {a.tipo === 'bolao' && (
             <span>
@@ -317,7 +361,9 @@ export function ApostaDetalhePage() {
                   </Linha>
                 )}
                 <Linha rotulo="Prêmio">
-                  <span className="text-muted-foreground">{a.status === 'aguardando' ? 'Aguardando sorteio' : '—'}</span>
+                  <span className="text-muted-foreground">
+                    {a.status === 'aguardando' ? 'Aguardando sorteio' : '—'}
+                  </span>
                 </Linha>
               </dl>
             </CardContent>

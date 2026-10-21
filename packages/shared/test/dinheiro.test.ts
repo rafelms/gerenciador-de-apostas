@@ -123,7 +123,10 @@ describe('ratearMaiorResto', () => {
     }
     for (let i = 0; i < 2000; i++) {
       const total = Math.floor(aleatorio() * 10_000_000)
-      const pesos = Array.from({ length: 1 + Math.floor(aleatorio() * 8) }, () => Math.round((0.01 + aleatorio() * 10) * 100) / 100)
+      const pesos = Array.from(
+        { length: 1 + Math.floor(aleatorio() * 8) },
+        () => Math.round((0.01 + aleatorio() * 10) * 100) / 100,
+      )
       const partes = ratearMaiorResto(total, pesos)
       expect(partes.reduce((a, b) => a + b, 0)).toBe(total)
       expect(partes.every((p) => Number.isInteger(p) && p >= 0)).toBe(true)
