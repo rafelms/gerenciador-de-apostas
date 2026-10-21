@@ -28,6 +28,7 @@ function CardUltimo({ modalidade, r }: { modalidade: Modalidade; r: UltimoResult
             </span>
           )}
           {r?.acumulado && <Badge variant="secondary">Acumulou</Badge>}
+          {r?.fonte === 'usuario' && <Badge variant="outline">Não oficial</Badge>}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3">

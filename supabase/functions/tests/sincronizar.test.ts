@@ -215,6 +215,75 @@ Deno.test(
 )
 
 Deno.test(
+  'resultado informado por usuário: a API o substitui, confere de novo e refaz a notificação',
+  opcoes,
+  async () => {
+    const { userId, apostaId, megaId } = await criarCenario()
+    try {
+      // Resultado errado informado à mão: o jogo faz só 3 acertos (não premiado).
+      const informado = await gravarConcurso(
+        db,
+        megaId,
+        {
+          numero: ANTERIOR,
+          dataSorteio: '2026-10-14',
+          dezenas: [1, 2, 3, 4, 17, 22],
+          rateio: [],
+          acumulado: null,
+          dataProximo: null,
+          valorEstimadoProximoCentavos: null,
+        },
+        'usuario',
+      )
+      await conferirConcurso(db, informado.id)
+      const lida = () =>
+        db.from('notificacoes').update({ lida_em: new Date().toISOString() }).eq('user_id', userId)
+      await lida()
+
+      const chamadas: string[] = []
+      const api = {
+        db,
+        fetch: apiSimulada(chamadas),
+        esperar: semEspera,
+        urlApi: 'https://api.test',
+      }
+      await sincronizar(api, 'cron')
+      assert(
+        chamadas.includes(`https://api.test/megasena/${ANTERIOR}`),
+        'busca de novo o concurso não oficial',
+      )
+
+      const { data: concurso } = await db
+        .from('concursos')
+        .select('fonte, dezenas')
+        .eq('modalidade_id', megaId)
+        .eq('numero', ANTERIOR)
+        .single()
+      assertEquals(concurso!.fonte, 'api_caixa')
+      assertEquals(concurso!.dezenas, [3, 17, 22, 31, 40, 58])
+
+      const { data: aposta } = await db.from('apostas').select('status').eq('id', apostaId).single()
+      assertEquals(aposta!.status, 'premiada')
+      const ler = () => db.from('notificacoes').select('tipo, lida_em').eq('user_id', userId)
+      const { data: notificacoes } = await ler()
+      assertEquals(notificacoes!.length, 1)
+      assertEquals(notificacoes![0]!.tipo, 'premio')
+      assertEquals(notificacoes![0]!.lida_em, null, 'a notificação corrigida volta como não lida')
+
+      // Já oficial: sincronizar de novo não busca o concurso nem mexe na notificação.
+      await lida()
+      chamadas.length = 0
+      await sincronizar(api, 'cron')
+      assert(!chamadas.includes(`https://api.test/megasena/${ANTERIOR}`))
+      const { data: depois } = await ler()
+      assert(depois![0]!.lida_em !== null)
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
+
+Deno.test(
   'conferir agora: busca na API o resultado que falta à aposta, sem esperar o cron',
   opcoes,
   async () => {

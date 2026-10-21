@@ -13,8 +13,9 @@ export const faixaRateioSchema = z.object({
 })
 
 /**
- * Resultado lançado à mão pelo admin quando a API da CAIXA não responde (seção 11.5).
- * O rateio é opcional: sem ele, as apostas premiadas ficam com o valor a informar.
+ * Resultado lançado à mão quando a API da CAIXA não responde (seção 11.5): pelo admin,
+ * ou por um usuário para o concurso da própria aposta (não oficial). O rateio é
+ * opcional: sem ele, as apostas premiadas ficam com o valor a informar.
  */
 export const resultadoManualSchema = z
   .object({

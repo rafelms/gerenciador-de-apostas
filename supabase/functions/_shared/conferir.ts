@@ -266,8 +266,12 @@ async function atualizarStatus(db: SupabaseClient, aposta: Aposta) {
   }
 }
 
-/** Uma notificação por usuário e concurso (chave_dedup = 'resultado:{concurso_id}'). */
-async function notificar(ctx: Contexto, resultados: ResultadoAposta[]) {
+/**
+ * Uma notificação por usuário e concurso (chave_dedup = 'resultado:{concurso_id}').
+ * `renotificar`: o resultado foi corrigido (ex.: a API substituiu um informado à mão),
+ * então a notificação existente é reescrita e volta como não lida.
+ */
+async function notificar(ctx: Contexto, resultados: ResultadoAposta[], renotificar = false) {
   const porUsuario = new Map<string, ResultadoAposta[]>()
   for (const r of resultados) porUsuario.set(r.userId, [...(porUsuario.get(r.userId) ?? []), r])
 
@@ -290,13 +294,14 @@ async function notificar(ctx: Contexto, resultados: ResultadoAposta[]) {
       corpo: texto.corpo,
       link: alvo ? `/apostas/${alvo.apostaId}` : '/resultados',
       chave_dedup: `resultado:${ctx.concurso.id}`,
+      ...(renotificar ? { lida_em: null, created_at: new Date().toISOString() } : {}),
     }
   })
   if (linhas.length === 0) return
   exigir(
     await ctx.db
       .from('notificacoes')
-      .upsert(linhas, { onConflict: 'user_id,chave_dedup', ignoreDuplicates: true }),
+      .upsert(linhas, { onConflict: 'user_id,chave_dedup', ignoreDuplicates: !renotificar }),
     'gravar notificações',
   )
 }
@@ -308,6 +313,7 @@ const CAMPOS_APOSTA =
 export async function conferirConcurso(
   db: SupabaseClient,
   concursoId: number,
+  opcoes: { renotificar?: boolean } = {},
 ): Promise<ResumoConferencia> {
   const ctx = await carregarContexto(db, concursoId)
   if (!ctx) return { concursoId, apostasConferidas: 0, premiadas: 0 }
@@ -331,7 +337,7 @@ export async function conferirConcurso(
     resultados.push(await conferirApostaNoConcurso(ctx, aposta))
     await atualizarStatus(db, aposta)
   }
-  await notificar(ctx, resultados)
+  await notificar(ctx, resultados, opcoes.renotificar)
   return {
     concursoId,
     apostasConferidas: resultados.length,

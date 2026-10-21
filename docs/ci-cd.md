@@ -25,7 +25,7 @@ branch de trabalho ──PR──▶ CI (ci.yml) ──verde──▶ merge na m
 | Deploy do front                 | Vercel (fora do Actions) | integração Git: preview por PR, produção na `main`                           |
 | Sincronização de resultados     | GitHub Actions           | agendado (22h30 e 09h00, horário de Brasília); manual                        |
 
-**Situação atual:** a produção (Supabase e Vercel) ainda **não existe**. O CI funciona. O deploy e o cron falham por falta de configuração e devem ficar desativados no GitHub até a produção ser montada (ver [sessao-2026-10-21.md](sessao-2026-10-21.md), seção 10.4).
+**Situação atual:** a produção existe (Supabase e Vercel, montadas em 21/10) e os três workflows funcionam. O cron roda, mas a API da CAIXA responde **HTTP 403** às Edge Functions na nuvem (pendência P4 da spec): até isso ser resolvido, os resultados entram pelo admin ou pelos próprios usuários (ver [sessao-2026-10-21.md](sessao-2026-10-21.md), seção 11).
 
 ---
 
@@ -96,7 +96,8 @@ O CI **não usa secrets**. Tudo roda contra o Supabase local, com as chaves púb
 - Roda às 01h30 e às 12h00 UTC (22h30 e 09h00 em Brasília) e também pode ser disparado à mão.
 - Faz uma chamada HTTP autenticada à Edge Function `sync-resultados`, que busca os concursos na API da CAIXA, confere as apostas e processa os prazos de prêmios.
 - Também evita que o projeto Supabase gratuito pause por inatividade.
-- Falha em uma modalidade não derruba o job (fica registrada no log de sincronização). O job só falha em erro geral, quando a resposta não é 200.
+- Falha em uma modalidade não derruba o job (fica registrada no log de sincronização). O job só falha em erro geral, quando a resposta não é 200. Por isso um job **verde** pode ter todas as modalidades com erro: confira o resumo no log do job ou a tabela `sync_logs`.
+- Resultados lançados à mão (admin) ou informados por usuários não são definitivos: o cron busca esses concursos de novo e os substitui pelo oficial assim que a API responder.
 - A resposta impressa no log contém só o resumo por modalidade, sem dados de usuários.
 
 > O cron não é o único caminho para conferir. A conferência sob demanda (`conferir-apostas` com `aposta_id`, botão "Conferir agora") busca na hora o resultado que falta (spec, seção 10.2).
@@ -127,7 +128,7 @@ A definição versionada fica em `.github/rulesets/protecao-main.json`. O GitHub
 | -------- | ------------------------------------------------ | ------------------ | -------------------------------- |
 | Local    | Supabase CLI via Docker (`pnpm db:start`)        | `pnpm dev`         | seed fictício, usuários de teste |
 | CI       | Supabase CLI no runner, recriado a cada execução | build + Playwright | seed fictício                    |
-| Produção | projeto Supabase gerenciado (a criar)            | Vercel (a criar)   | reais, só por convite            |
+| Produção | projeto Supabase gerenciado                      | Vercel             | reais, só por convite            |
 
 Diferenças intencionais entre o local e a produção:
 
