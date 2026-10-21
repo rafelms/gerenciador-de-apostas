@@ -229,6 +229,7 @@ function LancarManual({ modalidades }: { modalidades: Modalidade[] }) {
           {modalidade && (
             <CamposResultado
               regra={modalidade.regra}
+              cor={modalidade.cor}
               dezenas={dezenas}
               onDezenas={setDezenas}
               acumulado={acumulado}

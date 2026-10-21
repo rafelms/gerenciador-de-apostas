@@ -9,6 +9,8 @@ import type { RateioDoFormulario } from './rateio-formulario'
 
 interface CamposResultadoProps {
   regra: RegraModalidade
+  /** Cor da modalidade (#rrggbb) para as dezenas marcadas. */
+  cor?: string
   dezenas: number[]
   onDezenas: (dezenas: number[]) => void
   acumulado: boolean
@@ -20,6 +22,7 @@ interface CamposResultadoProps {
 /** Dezenas sorteadas, "acumulou" e rateio opcional: usado pelo admin e pelo usuário. */
 export function CamposResultado({
   regra,
+  cor,
   dezenas,
   onDezenas,
   acumulado,
@@ -43,6 +46,7 @@ export function CamposResultado({
           onChange={onDezenas}
           precoSimples={null}
           rotulo="Dezenas sorteadas"
+          cor={cor}
         />
       </fieldset>
 

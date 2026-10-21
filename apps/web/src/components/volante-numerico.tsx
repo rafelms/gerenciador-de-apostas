@@ -3,6 +3,7 @@ import type { RegraModalidade } from '@shared/regras/tipos.ts'
 import { Eraser } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { estiloDezenaMarcada } from '@/lib/cor'
 import { cn } from '@/lib/utils'
 
 interface VolanteNumericoProps {
@@ -12,6 +13,8 @@ interface VolanteNumericoProps {
   /** Preço da aposta simples vigente; null esconde o custo. */
   precoSimples: number | null
   rotulo?: string
+  /** Cor da modalidade (#rrggbb): as dezenas marcadas ficam nela. Sem cor, usa a cor primária. */
+  cor?: string
 }
 
 /**
@@ -25,6 +28,7 @@ export function VolanteNumerico({
   onChange,
   precoSimples,
   rotulo = 'Volante',
+  cor,
 }: VolanteNumericoProps) {
   const marcadas = new Set(selecionadas)
   const qtd = marcadas.size
@@ -89,10 +93,11 @@ export function VolanteNumerico({
               aria-label={`Dezena ${texto}`}
               disabled={!ativa && noLimite}
               onClick={() => alternar(d)}
+              style={ativa && cor ? estiloDezenaMarcada(cor) : undefined}
               className={cn(
                 'flex h-11 items-center justify-center rounded-full text-sm font-semibold tabular-nums transition-colors duration-150',
                 'disabled:cursor-not-allowed disabled:opacity-40',
-                ativa ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent',
+                ativa ? !cor && 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-accent',
               )}
             >
               {texto}

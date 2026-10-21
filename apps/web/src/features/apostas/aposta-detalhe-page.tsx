@@ -145,6 +145,7 @@ function Jogos({
         apostaId={aposta.id}
         slug={aposta.modalidades?.slug ?? ''}
         regra={regra}
+        cor={aposta.modalidades?.cor_hex ?? undefined}
         numero={concurso.numero}
         atual={atual}
       />
@@ -221,7 +222,11 @@ function Jogos({
                     </span>
                   )}
                 </p>
-                <ListaDezenas dezenas={j.dezenas} sorteadas={sorteadas} />
+                <ListaDezenas
+                  dezenas={j.dezenas}
+                  sorteadas={sorteadas}
+                  cor={aposta.modalidades?.cor_hex ?? undefined}
+                />
               </li>
             )
           })}

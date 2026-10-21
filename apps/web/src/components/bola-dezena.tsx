@@ -1,3 +1,4 @@
+import { estiloDezenaMarcada } from '@/lib/cor'
 import { cn } from '@/lib/utils'
 
 export type EstadoDezena = 'neutra' | 'marcada' | 'acertada' | 'sorteada'
@@ -19,6 +20,8 @@ interface BolaDezenaProps {
   numero: number
   estado?: EstadoDezena
   tamanho?: 'sm' | 'md'
+  /** Cor da modalidade (#rrggbb), usada no estado "marcada". */
+  cor?: string
   className?: string
 }
 
@@ -27,18 +30,21 @@ export function BolaDezena({
   numero,
   estado = 'marcada',
   tamanho = 'md',
+  cor,
   className,
 }: BolaDezenaProps) {
   const texto = numero.toString().padStart(2, '0')
   const sufixo = rotuloEstado[estado]
+  const comCor = estado === 'marcada' && !!cor
   return (
     <span
       className={cn(
         'inline-flex shrink-0 items-center justify-center rounded-full font-semibold tabular-nums',
         tamanho === 'sm' ? 'size-8 text-xs' : 'size-10 text-sm',
-        estilos[estado],
+        comCor ? undefined : estilos[estado],
         className,
       )}
+      style={comCor ? estiloDezenaMarcada(cor) : undefined}
       aria-label={sufixo ? `${texto}, ${sufixo}` : undefined}
     >
       {texto}
@@ -51,10 +57,18 @@ interface ListaDezenasProps {
   /** Dezenas sorteadas: as acertadas ficam douradas. */
   sorteadas?: number[] | null
   tamanho?: 'sm' | 'md'
+  /** Cor da modalidade para as dezenas marcadas (as acertadas continuam douradas). */
+  cor?: string
   className?: string
 }
 
-export function ListaDezenas({ dezenas, sorteadas, tamanho = 'sm', className }: ListaDezenasProps) {
+export function ListaDezenas({
+  dezenas,
+  sorteadas,
+  tamanho = 'sm',
+  cor,
+  className,
+}: ListaDezenasProps) {
   const set = new Set(sorteadas ?? [])
   return (
     <ul className={cn('flex flex-wrap gap-1.5', className)} aria-label="Dezenas">
@@ -63,6 +77,7 @@ export function ListaDezenas({ dezenas, sorteadas, tamanho = 'sm', className }: 
           <BolaDezena
             numero={d}
             tamanho={tamanho}
+            cor={cor}
             estado={sorteadas ? (set.has(d) ? 'acertada' : 'neutra') : 'marcada'}
           />
         </li>
