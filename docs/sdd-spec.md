@@ -323,7 +323,7 @@ create table concursos (
   acumulado boolean,
   data_proximo date,
   valor_estimado_proximo_centavos bigint,
-  fonte text not null default 'api_caixa',   -- 'api_caixa' | 'manual'
+  fonte text not null default 'api_caixa',   -- 'api_caixa' | 'manual' (admin) | 'usuario' (não oficial)
   sincronizado_em timestamptz,
   unique (modalidade_id, numero)
 );
@@ -669,13 +669,16 @@ calcularIR(base, cfg):
 - **Fonte:** `https://servicebus2.caixa.gov.br/portaldeloterias/api/{slug}/{numero?}` (API pública **não oficial** do portal). Sem número = último concurso.
 - **Algoritmo:**
   1. Para cada modalidade ativa: buscar o último concurso.
-  2. Calcular os concursos **necessários** = números em `aposta_concursos` sem resultado em `concursos` e ≤ último número.
+  2. Calcular os concursos **necessários** = números em `aposta_concursos` sem resultado **oficial** completo em `concursos` (sem dezenas/rateio ou com `fonte` diferente de `api_caixa`) e ≤ último número. A API tem prioridade: resultado lançado à mão (admin ou usuário) é buscado de novo e substituído pelo oficial.
   3. Buscar cada concurso necessário (máx. 30 por execução, com 300 ms de intervalo).
   4. Normalizar a resposta para o formato de `concursos` (dezenas ordenadas; rateio → `valor_centavos`) e fazer `upsert`.
-  5. Para cada concurso novo/alterado, chamar `conferir-apostas` (invocação interna).
+  5. Para cada concurso novo/alterado, chamar `conferir-apostas` (invocação interna). Se o oficial **corrigiu** um resultado não oficial já conferido, as notificações `resultado:{concurso_id}` são reescritas e voltam como não lidas.
   6. Marcar prêmios vencidos como `expirado` e gerar notificações `premio_expirando` (7 dias e 1 dia antes).
-- **Resiliência:** timeout de 10 s por chamada; 3 tentativas com backoff; se a API falhar, registrar o erro e **não** quebrar o job. O admin pode lançar o resultado manualmente na UI (`fonte = 'manual'`). Possível problema de TLS/certificado no Deno: registrar e cair no modo manual. [PENDÊNCIA P4]
+- **Resiliência:** timeout de 10 s por chamada; 3 tentativas com backoff; se a API falhar, registrar o erro e **não** quebrar o job. O admin pode lançar o resultado manualmente na UI (`fonte = 'manual'`) e qualquer usuário pode informar o de um concurso da própria aposta (`fonte = 'usuario'`). As chamadas usam cabeçalhos de navegador (User-Agent, Origin e Referer do portal). [PENDÊNCIA P4]
 - **Resposta:** `{ modalidades: [{ slug, ultimo, inseridos, conferidos, erro? }] }`.
+- **Ações manuais** (mesma function):
+  - `POST /sync-resultados/manual` (admin com `aal2`): lança ou corrige o resultado (`fonte = 'manual'`) e confere as apostas.
+  - `POST /sync-resultados/informar` (JWT de qualquer usuário ativo, 10 chamadas/min): `{ apostaId, ...resultado }` para um concurso **da própria aposta**. Grava com `fonte = 'usuario'` e confere as apostas de **todos** (o concurso é um só). Recusa (409) se o concurso já tem resultado oficial ou do admin; um resultado de usuário pode ser corrigido por outro usuário. Registra em `sync_logs` com `origem = 'usuario'`.
 
 ### 10.2 `conferir-apostas`
 - **Entrada:** `{ concurso_id }` (somente service role).
@@ -781,7 +784,7 @@ Editar: permitido; se já conferida, refaz a conferência automaticamente. Exclu
 ### 11.5 Conferência e resultados
 - Página "Resultados": último concurso por modalidade (dezenas, acumulou?, próximo sorteio e estimativa) e lista de concursos com apostas do usuário.
 - Cada aposta mostra o resultado assim que o concurso é sincronizado. Não é preciso esperar o cron: aposta registrada depois do sorteio é conferida ao salvar, e o detalhe tem o botão **"Conferir agora"** enquanto algum concurso estiver aguardando (10.2).
-- Se o resultado não sincronizar (API fora): o admin lança dezenas e rateio manualmente; os membros veem "Aguardando resultado oficial".
+- Se o resultado não sincronizar (API fora): o admin lança dezenas e rateio manualmente; os membros veem "Aguardando resultado oficial" e podem **informar o resultado** do concurso da aposta (botão no detalhe), se já o souberem. Esse resultado aparece como "informado por um usuário, não oficial" (no detalhe) e "Não oficial" (página Resultados), pode ser corrigido por qualquer usuário com aposta no concurso e é substituído pelo oficial da API assim que ele for sincronizado (10.1).
 - Prêmio manual: o usuário pode informar o prêmio recebido (`valor_informado_manual`), útil para faixas sem rateio disponível.
 
 ### 11.6 Configurações globais (admin)
@@ -1132,7 +1135,7 @@ Dados de teste: **sempre fictícios**. Nunca commitar comprovantes reais.
 | P1 | O `valorPremio` do rateio da API é bruto ou líquido? Validar com um prêmio real recebido | `bruto` (configurável) |
 | P2 | Em bolão, o IR é apurado por cota ou pela aposta inteira? | `cota` (configurável) |
 | P3 | Amostras de comprovante de aposta simples e de bolão de Lotofácil/Quina | só o parser do Apêndice A |
-| P4 | A API da CAIXA responde a partir do Deno (TLS/headers)? Testar na F2.3 | se não responder, modo manual + avaliar fonte alternativa |
+| P4 | A API da CAIXA responde a partir do Deno (TLS/headers)? Testar na F2.3 | Local: responde (TLS ok). **Produção (21/10): HTTP 403** a partir das Edge Functions do Supabase, provavelmente bloqueio por IP de nuvem. Mitigações: cabeçalhos de navegador (a confirmar no próximo cron), resultado manual do admin e resultado informado pelo usuário. Se o 403 continuar: avaliar buscar a partir de outro lugar ou fonte alternativa |
 | P5 | Limites de bolão (mín. de cotas, valor mínimo) de Lotofácil e Quina | colunas nulas, sem validar |
 | P6 | Backup automático mensal | apenas "Exportar tudo" |
 
