@@ -1,4 +1,3 @@
-import { tentarDeReais, formatarBRL } from '@shared/dinheiro.ts'
 import { rateioDoBanco } from '@shared/resultados.ts'
 import { resultadoManualSchema } from '@shared/schemas/resultados.ts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -9,18 +8,21 @@ import { toast } from 'sonner'
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
 import { Campo } from '@/components/campo'
 import { EmptyState } from '@/components/empty-state'
-import { InputDinheiro } from '@/components/input-dinheiro'
 import { ModalidadeChip } from '@/components/modalidade-chip'
 import { SelectNativo } from '@/components/select-nativo'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { VolanteNumerico } from '@/components/volante-numerico'
 import { useModalidades, type Modalidade } from '@/features/modalidades/use-modalidades'
+import { CamposResultado } from '@/features/resultados/campos-resultado'
+import {
+  rateioDoFormulario,
+  rateioParaFormulario,
+  type RateioDoFormulario,
+} from '@/features/resultados/rateio-formulario'
 import { formatarDataHora, hojeIso } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import {
@@ -96,9 +98,10 @@ function Sincronizar() {
   )
 }
 
-interface LinhaRateio {
-  ganhadores: string
-  valor: string
+const rotulosFonte: Record<string, string> = {
+  api_caixa: 'da API',
+  manual: 'lançado à mão',
+  usuario: 'informado por um usuário',
 }
 
 function LancarManual({ modalidades }: { modalidades: Modalidade[] }) {
@@ -109,15 +112,8 @@ function LancarManual({ modalidades }: { modalidades: Modalidade[] }) {
   const [data, setData] = useState(hojeIso())
   const [dezenas, setDezenas] = useState<number[]>([])
   const [acumulado, setAcumulado] = useState(false)
-  const [rateio, setRateio] = useState<Record<number, LinhaRateio>>({})
+  const [rateio, setRateio] = useState<RateioDoFormulario>({})
   const [erros, setErros] = useState<string[]>([])
-
-  // No volante, o admin marca exatamente as dezenas sorteadas.
-  const regraSorteio = modalidade && {
-    ...modalidade.regra,
-    minMarcadas: modalidade.regra.qtdSorteadas,
-    maxMarcadas: modalidade.regra.qtdSorteadas,
-  }
 
   function trocarModalidade(novo: string) {
     setSlug(novo)
@@ -133,20 +129,8 @@ function LancarManual({ modalidades }: { modalidades: Modalidade[] }) {
       setData(c.data_sorteio)
       setDezenas(c.dezenas ?? [])
       setAcumulado(!!c.acumulado)
-      setRateio(
-        Object.fromEntries(
-          rateioDoBanco(c.rateio).map((f) => [
-            f.acertos,
-            {
-              ganhadores: String(f.ganhadores),
-              valor: formatarBRL(f.valorCentavos).replace('R$ ', ''),
-            },
-          ]),
-        ),
-      )
-      toast.success(
-        `Concurso ${c.numero} carregado (${c.fonte === 'manual' ? 'lançado à mão' : 'da API'}).`,
-      )
+      setRateio(rateioParaFormulario(rateioDoBanco(c.rateio)))
+      toast.success(`Concurso ${c.numero} carregado (${rotulosFonte[c.fonte] ?? c.fonte}).`)
     },
     onError: () => toast.error('Não foi possível buscar o concurso.'),
   })
@@ -169,23 +153,12 @@ function LancarManual({ modalidades }: { modalidades: Modalidade[] }) {
   function enviar(e: React.FormEvent) {
     e.preventDefault()
     if (!modalidade) return
-    const linhas = modalidade.regra.faixas.flatMap((f) => {
-      const l = rateio[f.acertos]
-      if (!l || (!l.valor.trim() && !l.ganhadores.trim())) return []
-      return [
-        {
-          acertos: f.acertos,
-          ganhadores: Number(l.ganhadores || 0),
-          valorCentavos: tentarDeReais(l.valor) ?? Number.NaN,
-        },
-      ]
-    })
     const entrada = resultadoManualSchema.safeParse({
       modalidadeSlug: modalidade.slug,
       numero: /^\d+$/.test(numero) ? Number(numero) : Number.NaN,
       dataSorteio: data,
       dezenas,
-      rateio: linhas,
+      rateio: rateioDoFormulario(modalidade.regra, rateio),
       acumulado,
     })
     if (!entrada.success) {
@@ -253,81 +226,16 @@ function LancarManual({ modalidades }: { modalidades: Modalidade[] }) {
             <Search aria-hidden="true" /> Carregar resultado existente
           </Button>
 
-          {regraSorteio && (
-            <fieldset className="grid gap-2">
-              <legend className="mb-1 text-sm font-medium">Dezenas sorteadas</legend>
-              <VolanteNumerico
-                regra={regraSorteio}
-                selecionadas={dezenas}
-                onChange={setDezenas}
-                precoSimples={null}
-                rotulo="Dezenas sorteadas"
-              />
-            </fieldset>
-          )}
-
-          <label className="flex min-h-11 w-fit items-center gap-2 text-sm font-medium">
-            <Checkbox
-              checked={acumulado}
-              onCheckedChange={(v) => setAcumulado(v === true)}
-              className="size-5"
-            />
-            Acumulou
-          </label>
-
           {modalidade && (
-            <fieldset className="grid gap-2">
-              <legend className="mb-1 text-sm font-medium">Rateio (opcional)</legend>
-              <div className="grid gap-3">
-                {modalidade.regra.faixas.map((f) => (
-                  <div
-                    key={f.acertos}
-                    className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(6rem,1fr)_6rem_minmax(8rem,1.5fr)]"
-                  >
-                    <span className="col-span-2 text-sm font-medium sm:col-span-1 sm:pb-3">
-                      {f.nome}
-                    </span>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor={`gan-${f.acertos}`} className="text-xs">
-                        Ganhadores
-                      </Label>
-                      <Input
-                        id={`gan-${f.acertos}`}
-                        inputMode="numeric"
-                        value={rateio[f.acertos]?.ganhadores ?? ''}
-                        onChange={(e) =>
-                          setRateio((r) => ({
-                            ...r,
-                            [f.acertos]: {
-                              valor: r[f.acertos]?.valor ?? '',
-                              ganhadores: e.target.value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor={`val-${f.acertos}`} className="text-xs">
-                        Prêmio por aposta
-                      </Label>
-                      <InputDinheiro
-                        id={`val-${f.acertos}`}
-                        value={rateio[f.acertos]?.valor ?? ''}
-                        onChange={(e) =>
-                          setRateio((r) => ({
-                            ...r,
-                            [f.acertos]: {
-                              ganhadores: r[f.acertos]?.ganhadores ?? '',
-                              valor: e.target.value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </fieldset>
+            <CamposResultado
+              regra={modalidade.regra}
+              dezenas={dezenas}
+              onDezenas={setDezenas}
+              acumulado={acumulado}
+              onAcumulado={setAcumulado}
+              rateio={rateio}
+              onRateio={setRateio}
+            />
           )}
 
           {erros.length > 0 && (
@@ -402,7 +310,14 @@ function Log({ modalidades }: { modalidades: Modalidade[] }) {
                       {m ? <ModalidadeChip nome={m.nome} cor={m.cor} /> : '—'}
                     </td>
                     <td className="hidden py-2 sm:table-cell">
-                      {{ cron: 'Automática', admin: 'Admin', manual: 'Manual' }[l.origem]}
+                      {
+                        {
+                          cron: 'Automática',
+                          admin: 'Admin',
+                          manual: 'Manual',
+                          usuario: 'Usuário',
+                        }[l.origem]
+                      }
                     </td>
                     <td className="py-2">
                       {l.status === 'ok' ? (
