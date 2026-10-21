@@ -33,6 +33,17 @@ export interface ResumoModalidade {
   erro?: string
 }
 
+// A API responde 403 a partir da nuvem do Supabase (pendência P4). Cabeçalhos de
+// navegador, como os do próprio portal de loterias, para não parecer um robô.
+const CABECALHOS_CAIXA = {
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'pt-BR,pt;q=0.9',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  Origin: 'https://loterias.caixa.gov.br',
+  Referer: 'https://loterias.caixa.gov.br/',
+}
+
 const esperarPadrao = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 /**
@@ -49,7 +60,7 @@ export async function buscarJson(
   for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
     try {
       const resposta = await f(url, {
-        headers: { Accept: 'application/json' },
+        headers: CABECALHOS_CAIXA,
         signal: AbortSignal.timeout(TIMEOUT_MS),
       })
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`)
