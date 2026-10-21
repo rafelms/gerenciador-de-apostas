@@ -31,6 +31,8 @@ interface InformarResultadoProps {
   apostaId: string
   slug: string
   regra: RegraModalidade
+  /** Cor da modalidade (#rrggbb) para as dezenas marcadas no volante. */
+  cor?: string
   numero: number
   /** Resultado não oficial já informado (para corrigir); null quando ainda não há. */
   atual: ConcursoDaAposta['resultado']
@@ -44,6 +46,7 @@ export function InformarResultado({
   apostaId,
   slug,
   regra,
+  cor,
   numero,
   atual,
 }: InformarResultadoProps) {
@@ -134,6 +137,7 @@ export function InformarResultado({
           </Campo>
           <CamposResultado
             regra={regra}
+            cor={cor}
             dezenas={dezenas}
             onDezenas={setDezenas}
             acumulado={acumulado}

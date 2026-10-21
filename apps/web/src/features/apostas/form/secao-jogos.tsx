@@ -220,6 +220,7 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
                   }
                   precoSimples={preco}
                   rotulo={`Volante do jogo ${i + 1}`}
+                  cor={modalidade.cor}
                 />
               ) : dezenas.length > 0 ? (
                 <button
@@ -228,7 +229,7 @@ export function SecaoJogos({ modalidade }: { modalidade: Modalidade | undefined 
                   onClick={() => setAtivo(i)}
                   aria-label={`Editar jogo ${i + 1}`}
                 >
-                  <ListaDezenas dezenas={dezenas} />
+                  <ListaDezenas dezenas={dezenas} cor={modalidade.cor} />
                 </button>
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhuma dezena marcada.</p>

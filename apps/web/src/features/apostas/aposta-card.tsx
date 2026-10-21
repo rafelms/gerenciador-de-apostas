@@ -1,13 +1,15 @@
 import { Link } from 'react-router'
 
+import { BotaoCopiar } from '@/components/botao-copiar'
 import { ModalidadeChip } from '@/components/modalidade-chip'
 import { MoneyText } from '@/components/money-text'
 import { StatusBadge } from '@/components/status-badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatarData } from '@/lib/formatadores'
 import { cn } from '@/lib/utils'
-import type { ResumoAposta } from './api'
+import { apostasParaCopiar, type ResumoAposta } from './api'
 import { rotulosTipo } from './filtros'
+import { textoDaAposta } from './texto-copia'
 
 interface ApostaCardProps {
   aposta: ResumoAposta
@@ -30,15 +32,17 @@ export function ApostaCard({
   onSelecionar,
 }: ApostaCardProps) {
   const titulo = `${a.modalidade_nome} ${textoConcursos(a)}`
+  // Fora da seleção, o botão de copiar fica no canto: o topo reserva o espaço dele.
+  const reserva = !selecionando && 'pr-12'
   const conteudo = (
     <>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className={cn('flex flex-wrap items-center gap-x-2 gap-y-1', reserva)}>
         <ModalidadeChip nome={a.modalidade_nome ?? ''} cor={a.modalidade_cor ?? '#6A6F9E'} />
         <span className="text-sm font-semibold tabular-nums">{textoConcursos(a)}</span>
         <span className="flex-1" />
         {a.status && <StatusBadge status={a.status} />}
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className={cn('text-sm text-muted-foreground', reserva)}>
         {a.tipo && rotulosTipo[a.tipo]}
         {a.tipo === 'bolao' &&
           a.bolao_cotas_usuario &&
@@ -110,14 +114,27 @@ export function ApostaCard({
     )
   }
 
+  // O botão fica ao lado do link (não dentro dele: botão dentro de link é HTML inválido).
   return (
-    <Link
-      to={`/apostas/${a.id}`}
-      aria-label={titulo}
-      className={cn(classe, 'hover:bg-accent')}
-      style={{ borderLeftColor: a.modalidade_cor ?? undefined }}
-    >
-      {conteudo}
-    </Link>
+    <div className="relative">
+      <Link
+        to={`/apostas/${a.id}`}
+        aria-label={titulo}
+        className={cn(classe, 'hover:bg-accent')}
+        style={{ borderLeftColor: a.modalidade_cor ?? undefined }}
+      >
+        {conteudo}
+      </Link>
+      <BotaoCopiar
+        className="absolute top-1.5 right-1.5"
+        aria-label={`Copiar jogos de ${titulo}`}
+        mensagemSucesso="Jogos copiados."
+        obterTexto={async () => {
+          const [aposta] = await apostasParaCopiar([a.id!])
+          if (!aposta) throw new Error('Aposta não encontrada.')
+          return textoDaAposta(aposta)
+        }}
+      />
+    </div>
   )
 }
