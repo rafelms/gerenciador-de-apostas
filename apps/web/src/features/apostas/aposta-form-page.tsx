@@ -14,6 +14,7 @@ import { useModalidades } from '@/features/modalidades/use-modalidades'
 import { chaves } from '@/lib/query-keys'
 import { useDesktop } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
+import { conferirApostaAgora } from '@/features/conferencia/api'
 import { carregarAposta, salvarAposta } from './api'
 import {
   apostaParaForm,
@@ -63,7 +64,13 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
   const edicao = !!id
 
   const salvar = useMutation({
-    mutationFn: (valores: FormAposta) => salvarAposta(paraApostaInput(valores, modalidade), id),
+    mutationFn: async (valores: FormAposta) => {
+      const salvo = await salvarAposta(paraApostaInput(valores, modalidade), id)
+      // Se o concurso já foi sorteado, a aposta sai conferida (editar refaz a conferência).
+      // Falhar aqui não perde a aposta: a próxima sincronização confere as pendentes.
+      await conferirApostaAgora(salvo).catch(() => undefined)
+      return salvo
+    },
     onSuccess: (novoId) => {
       void queryClient.invalidateQueries({ queryKey: chaves.apostas })
       toast.success(edicao ? 'Aposta atualizada.' : 'Aposta registrada.')

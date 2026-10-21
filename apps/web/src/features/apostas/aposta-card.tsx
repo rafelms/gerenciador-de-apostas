@@ -59,6 +59,12 @@ export function ApostaCard({
           <dt className="text-xs text-muted-foreground">Prêmio</dt>
           <dd className="font-medium">
             <MoneyText centavos={a.recuperado_usuario_centavos ?? 0} />
+            {a.premio_valor_pendente && (
+              <span className="block text-xs font-normal text-alerta">a confirmar</span>
+            )}
+            {!a.premio_valor_pendente && a.premio_a_resgatar && (
+              <span className="block text-xs font-normal text-destaque-texto">a resgatar</span>
+            )}
           </dd>
         </div>
         <div className="text-right">
@@ -67,7 +73,9 @@ export function ApostaCard({
           </dt>
           <dd className="font-medium">
             {a.melhor_acerto !== null ? (
-              <span className="tabular-nums">{a.melhor_acerto} acertos</span>
+              <span className="tabular-nums">
+                {a.melhor_acerto} {a.melhor_acerto === 1 ? 'acerto' : 'acertos'}
+              </span>
             ) : (
               <MoneyText centavos={a.saldo_centavos ?? 0} comSinal />
             )}

@@ -1,16 +1,21 @@
 import { calcularGastoUsuario, ratearMaiorResto } from '@shared/dinheiro.ts'
+import { dividirPremio } from '@shared/premio.ts'
 import { obterRegra } from '@shared/regras/index.ts'
+import type { RegraModalidade } from '@shared/regras/tipos.ts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
   Circle,
+  Clock,
   Pencil,
   RefreshCw,
   SearchX,
   Trash2,
+  Trophy,
 } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
@@ -23,9 +28,16 @@ import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  carregarConferencia,
+  carregarConfigPremio,
+  type ConcursoDaAposta,
+} from '@/features/conferencia/api'
 import { formatarData, formatarDataHora } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
-import { buscarConcurso, carregarAposta, excluirApostas, type ApostaCompleta } from './api'
+import { cn } from '@/lib/utils'
+import { carregarAposta, excluirApostas, type ApostaCompleta } from './api'
+import { PremioCard } from './detalhe/premio-card'
 import { rotulosOrigem, rotulosTipo } from './filtros'
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
@@ -37,16 +49,59 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   )
 }
 
-function Jogos({ aposta }: { aposta: ApostaCompleta }) {
-  const slug = aposta.modalidades?.slug ?? ''
-  // Resultado do 1º concurso (teimosinha: a conferência por concurso chega na fase 2).
-  const concurso = useQuery({
-    queryKey: chaves.concurso(aposta.modalidade_id, aposta.concurso_inicial),
-    queryFn: () => buscarConcurso(aposta.modalidade_id, aposta.concurso_inicial),
-  })
-  const sorteadas = concurso.data?.dezenas ?? null
-  const regra = obterRegra(slug)
+/** Teimosinha: um botão por concurso, com o estado de cada um (sorteado/premiado). */
+function SeletorConcurso({
+  concursos,
+  selecionado,
+  onSelecionar,
+}: {
+  concursos: ConcursoDaAposta[]
+  selecionado: number
+  onSelecionar: (numero: number) => void
+}) {
+  return (
+    <div role="radiogroup" aria-label="Concurso" className="flex flex-wrap gap-2">
+      {concursos.map((c) => {
+        const ativo = c.numero === selecionado
+        const Icone = c.premio ? Trophy : c.resultado ? CheckCircle2 : Clock
+        const estado = c.premio ? 'premiado' : c.resultado ? 'conferido' : 'aguardando'
+        return (
+          <button
+            key={c.numero}
+            type="button"
+            role="radio"
+            aria-checked={ativo}
+            aria-label={`Concurso ${c.numero}, ${estado}`}
+            onClick={() => onSelecionar(c.numero)}
+            className={cn(
+              'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold tabular-nums transition-colors duration-150',
+              ativo
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card hover:bg-accent',
+            )}
+          >
+            <Icone
+              className={cn('size-4', c.premio && !ativo && 'text-destaque-texto')}
+              aria-hidden="true"
+            />
+            {c.numero}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
+function Jogos({
+  aposta,
+  concurso,
+  regra,
+}: {
+  aposta: ApostaCompleta
+  concurso: ConcursoDaAposta | undefined
+  regra: RegraModalidade
+}) {
+  const sorteadas = concurso?.resultado?.dezenas ?? null
   return (
     <Card>
       <CardHeader>
@@ -55,14 +110,17 @@ function Jogos({ aposta }: { aposta: ApostaCompleta }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {sorteadas ? (
+        {concurso?.resultado ? (
           <div className="grid gap-2 rounded-lg bg-muted/60 p-3">
             <p className="text-sm font-medium">
-              Resultado do concurso {aposta.concurso_inicial}
-              {concurso.data?.data_sorteio && ` (${formatarData(concurso.data.data_sorteio)})`}
+              Resultado do concurso {concurso.numero} (
+              {formatarData(concurso.resultado.dataSorteio)})
+              {concurso.resultado.fonte === 'manual' && (
+                <span className="text-muted-foreground"> · lançado manualmente</span>
+              )}
             </p>
             <ul className="flex flex-wrap gap-1.5" aria-label="Dezenas sorteadas">
-              {sorteadas.map((d) => (
+              {concurso.resultado.dezenas.map((d) => (
                 <li key={d}>
                   <BolaDezena numero={d} estado="sorteada" tamanho="sm" />
                 </li>
@@ -70,18 +128,23 @@ function Jogos({ aposta }: { aposta: ApostaCompleta }) {
             </ul>
           </div>
         ) : (
-          !concurso.isPending && (
+          concurso && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarClock className="size-4" aria-hidden="true" /> Aguardando resultado oficial
-              do concurso {aposta.concurso_inicial}.
+              do concurso {concurso.numero}.
             </p>
           )
         )}
         <ol className="grid gap-3">
           {aposta.aposta_jogos.map((j) => {
-            const acertos = sorteadas
-              ? regra.conferir(j.dezenas, { dezenas: sorteadas }).acertos
-              : null
+            // A conferência gravada é a oficial; sem ela (ainda pendente), calcula no navegador.
+            const gravada = concurso?.conferencias.get(j.id)
+            const acertos =
+              gravada?.acertos ??
+              (sorteadas ? regra.conferir(j.dezenas, { dezenas: sorteadas }).acertos : null)
+            const premiado = gravada
+              ? Object.values(gravada.premiosPorFaixa).some((q) => q > 0)
+              : false
             return (
               <li key={j.ordem} className="grid gap-2">
                 <p className="text-sm font-medium">
@@ -90,6 +153,11 @@ function Jogos({ aposta }: { aposta: ApostaCompleta }) {
                     · {j.dezenas.length} dezenas
                     {acertos !== null && ` · ${acertos} ${acertos === 1 ? 'acerto' : 'acertos'}`}
                   </span>
+                  {premiado && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-destaque-texto">
+                      <Trophy className="size-3.5" aria-hidden="true" /> premiado
+                    </span>
+                  )}
                 </p>
                 <ListaDezenas dezenas={j.dezenas} sorteadas={sorteadas} />
               </li>
@@ -101,8 +169,15 @@ function Jogos({ aposta }: { aposta: ApostaCompleta }) {
   )
 }
 
-function Divisao({ aposta }: { aposta: ApostaCompleta }) {
+function Divisao({
+  aposta,
+  concurso,
+}: {
+  aposta: ApostaCompleta
+  concurso: ConcursoDaAposta | undefined
+}) {
   const participantes = aposta.participantes.map((p) => ({
+    id: p.id,
     nome: p.nome,
     peso: Number(p.peso),
     ehUsuario: p.eh_usuario,
@@ -117,69 +192,141 @@ function Divisao({ aposta }: { aposta: ApostaCompleta }) {
         participantes.map((p) => p.peso),
       )
 
+  // Prêmio do concurso selecionado, dividido pelos pesos (seção 9.6). O líquido gravado
+  // (premio_divisoes) é o oficial; bruto e IR proporcionais são calculados para exibir.
+  const premio = concurso?.premio ?? null
+  const linhasPremio = premio
+    ? dividirPremio(
+        { bruto: premio.bruto_usuario_centavos, liquido: premio.liquido_usuario_centavos },
+        participantes,
+      )
+    : []
+  const liquidoGravado = (id: string) =>
+    premio?.premio_divisoes.find((d) => d.participante_id === id)?.liquido_centavos
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>
-          <h2>Divisão</h2>
+          <h2>Divisão{premio ? ` · prêmio do concurso ${concurso!.numero}` : ''}</h2>
         </CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
-          <caption className="sr-only">Divisão do valor pago entre os participantes</caption>
+          <caption className="sr-only">
+            Divisão do valor pago{premio ? ' e do prêmio' : ''} entre os participantes
+          </caption>
           <thead>
             <tr className="border-b text-left text-muted-foreground">
               <th scope="col" className="py-2 font-medium">
                 Participante
               </th>
-              <th scope="col" className="py-2 text-right font-medium">
+              <th scope="col" className="hidden py-2 text-right font-medium sm:table-cell">
                 Peso
               </th>
               <th scope="col" className="py-2 text-right font-medium">
                 %
               </th>
               <th scope="col" className="py-2 text-right font-medium">
-                Parte do gasto
+                Gasto
               </th>
+              {premio && (
+                <>
+                  <th scope="col" className="hidden py-2 text-right font-medium sm:table-cell">
+                    Bruto
+                  </th>
+                  <th scope="col" className="hidden py-2 text-right font-medium sm:table-cell">
+                    IR
+                  </th>
+                  <th scope="col" className="py-2 text-right font-medium">
+                    Líquido
+                  </th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
             {participantes.map((p, i) => (
-              <tr key={i} className="border-b last:border-0">
+              <tr key={p.id} className="border-b last:border-0">
                 <td className="py-2">
                   {p.nome}
                   {p.ehUsuario && <span className="text-muted-foreground"> (você)</span>}
                 </td>
-                <td className="py-2 text-right tabular-nums">{p.peso.toLocaleString('pt-BR')}</td>
+                <td className="hidden py-2 text-right tabular-nums sm:table-cell">
+                  {p.peso.toLocaleString('pt-BR')}
+                </td>
                 <td className="py-2 text-right tabular-nums">
                   {((p.peso / soma) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
                 </td>
                 <td className="py-2 text-right">
                   <MoneyText centavos={partes[i] ?? 0} />
                 </td>
+                {premio && (
+                  <>
+                    <td className="hidden py-2 text-right sm:table-cell">
+                      <MoneyText centavos={linhasPremio[i]?.bruto ?? 0} />
+                    </td>
+                    <td className="hidden py-2 text-right sm:table-cell">
+                      <MoneyText centavos={linhasPremio[i]?.ir ?? 0} />
+                    </td>
+                    <td className="py-2 text-right font-semibold">
+                      <MoneyText centavos={liquidoGravado(p.id) ?? linhasPremio[i]?.liquido ?? 0} />
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="mt-3 text-xs text-muted-foreground">
-          A divisão do prêmio (bruto, IR e líquido) aparece aqui quando a aposta for premiada.
-        </p>
+        {!premio && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            A divisão do prêmio (bruto, IR e líquido) aparece aqui quando a aposta for premiada.
+          </p>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function LinhaDoTempo({ aposta }: { aposta: ApostaCompleta }) {
-  const conferida = aposta.status !== 'aguardando'
+function LinhaDoTempo({
+  aposta,
+  concursos,
+}: {
+  aposta: ApostaCompleta
+  concursos: ConcursoDaAposta[]
+}) {
+  const sorteados = concursos.filter((c) => c.resultado)
+  const premios = concursos.flatMap((c) => (c.premio ? [c.premio] : []))
+  const comValor = premios.filter((p) => p.liquido_usuario_centavos > 0)
+  const resgatados = comValor.filter((p) => p.status === 'resgatado')
+  const todos = sorteados.length === concursos.length && concursos.length > 0
+  const ultimoSorteio = sorteados.at(-1)?.resultado?.dataSorteio
   const passos = [
     { rotulo: 'Registrada', detalhe: formatarDataHora(aposta.created_at), feito: true },
-    { rotulo: 'Sorteio', detalhe: `Concurso ${aposta.concurso_inicial}`, feito: conferida },
+    {
+      rotulo: 'Sorteio',
+      detalhe:
+        sorteados.length === 0
+          ? `Concurso ${aposta.concurso_inicial}`
+          : `${sorteados.length} de ${concursos.length} ${concursos.length === 1 ? 'concurso' : 'concursos'}${ultimoSorteio ? ` · ${formatarData(ultimoSorteio)}` : ''}`,
+      feito: sorteados.length > 0,
+    },
     {
       rotulo: 'Conferida',
-      detalhe: conferida ? 'Concluída' : 'Na fase 2 (conferência automática)',
-      feito: conferida,
+      detalhe:
+        sorteados.length === 0 ? 'Automática após o sorteio' : todos ? 'Concluída' : 'Em andamento',
+      feito: todos,
     },
-    { rotulo: 'Resgatada', detalhe: aposta.status === 'premiada' ? 'Pendente' : '—', feito: false },
+    {
+      rotulo: 'Resgatada',
+      detalhe:
+        comValor.length === 0
+          ? '—'
+          : resgatados.length === comValor.length
+            ? 'Concluído'
+            : `${resgatados.length} de ${comValor.length} prêmios`,
+      feito: comValor.length > 0 && resgatados.length === comValor.length,
+    },
   ]
   return (
     <Card>
@@ -212,11 +359,31 @@ function LinhaDoTempo({ aposta }: { aposta: ApostaCompleta }) {
   )
 }
 
+/** Concurso mostrado ao abrir: o premiado, senão o último já sorteado, senão o primeiro. */
+function concursoInicial(concursos: ConcursoDaAposta[]) {
+  return (
+    (concursos.find((c) => c.premio) ?? concursos.filter((c) => c.resultado).at(-1) ?? concursos[0])
+      ?.numero ?? 0
+  )
+}
+
 export function ApostaDetalhePage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const consulta = useQuery({ queryKey: chaves.aposta(id), queryFn: () => carregarAposta(id) })
+  const a0 = consulta.data
+  const conferencia = useQuery({
+    queryKey: chaves.conferencia(id),
+    queryFn: () => carregarConferencia(a0!),
+    enabled: !!a0,
+  })
+  const cfg = useQuery({
+    queryKey: chaves.configPremio,
+    queryFn: carregarConfigPremio,
+    staleTime: 10 * 60 * 1000,
+  })
+  const [escolhido, setEscolhido] = useState<number | null>(null)
 
   const excluir = useMutation({
     mutationFn: () => excluirApostas([id]),
@@ -266,10 +433,18 @@ export function ApostaDetalhePage() {
   }
 
   const nome = a.modalidades?.nome ?? ''
-  const concursos =
+  const faixaConcursos =
     a.qtd_concursos > 1
       ? `${a.concurso_inicial}–${a.concurso_inicial + a.qtd_concursos - 1}`
       : String(a.concurso_inicial)
+  const concursos = conferencia.data ?? []
+  const numeroSelecionado = escolhido ?? concursoInicial(concursos)
+  const concurso = concursos.find((c) => c.numero === numeroSelecionado)
+  const regra = obterRegra(a.modalidades?.slug ?? '')
+  const liquidoTotal = concursos.reduce((s, c) => s + (c.premio?.liquido_usuario_centavos ?? 0), 0)
+  const premiosPendentes = concursos.some(
+    (c) => c.premio && c.premio.faixas_sem_valor.length > 0 && !c.premio.valor_informado_manual,
+  )
   const gastoUsuario = calcularGastoUsuario(
     a.valor_pago_centavos,
     a.participantes.map((p) => ({
@@ -290,7 +465,7 @@ export function ApostaDetalhePage() {
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h1 className="text-2xl font-bold tracking-tight">
-            {nome} {concursos}
+            {nome} {faixaConcursos}
           </h1>
           <StatusBadge status={a.status} />
         </div>
@@ -315,7 +490,7 @@ export function ApostaDetalhePage() {
             </Link>
           </Button>
           <ConfirmDialog
-            titulo={`Excluir a aposta ${nome} ${concursos}?`}
+            titulo={`Excluir a aposta ${nome} ${faixaConcursos}?`}
             descricao="Os jogos, a divisão e os anexos também serão excluídos. Não dá para desfazer."
             textoConfirmar="Excluir"
             destrutivo
@@ -330,10 +505,46 @@ export function ApostaDetalhePage() {
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="grid content-start gap-4">
-          <Jogos aposta={a} />
-          {a.participantes.length > 0 && <Divisao aposta={a} />}
+          {concursos.length > 1 && (
+            <SeletorConcurso
+              concursos={concursos}
+              selecionado={numeroSelecionado}
+              onSelecionar={setEscolhido}
+            />
+          )}
+          {conferencia.isError && (
+            <p className="text-sm text-destructive" role="alert">
+              Não foi possível carregar o resultado.{' '}
+              <Button
+                variant="link"
+                className="h-auto p-0"
+                onClick={() => void conferencia.refetch()}
+              >
+                Tentar de novo
+              </Button>
+            </p>
+          )}
+          {conferencia.isPending ? (
+            <Skeleton className="h-48 w-full" />
+          ) : (
+            <Jogos aposta={a} concurso={concurso} regra={regra} />
+          )}
+          {a.participantes.length > 0 && <Divisao aposta={a} concurso={concurso} />}
         </div>
         <div className="grid content-start gap-4">
+          {concurso && (
+            <PremioCard
+              apostaId={a.id}
+              concurso={concurso}
+              regra={regra}
+              cfg={cfg.data}
+              bolao={
+                a.tipo === 'bolao' && a.bolao_total_cotas && a.bolao_cotas_usuario
+                  ? { totalCotas: a.bolao_total_cotas, cotasUsuario: a.bolao_cotas_usuario }
+                  : null
+              }
+            />
+          )}
           <Card>
             <CardHeader>
               <CardTitle>
@@ -360,10 +571,17 @@ export function ApostaDetalhePage() {
                     <MoneyText centavos={gastoUsuario} />
                   </Linha>
                 )}
-                <Linha rotulo="Prêmio">
-                  <span className="text-muted-foreground">
-                    {a.status === 'aguardando' ? 'Aguardando sorteio' : '—'}
-                  </span>
+                <Linha rotulo={concursos.length > 1 ? 'Prêmios líquidos' : 'Prêmio líquido'}>
+                  {a.status === 'aguardando' ? (
+                    <span className="text-muted-foreground">Aguardando sorteio</span>
+                  ) : (
+                    <>
+                      <MoneyText centavos={liquidoTotal} />
+                      {premiosPendentes && (
+                        <span className="block text-xs text-alerta">valor a confirmar</span>
+                      )}
+                    </>
+                  )}
                 </Linha>
               </dl>
             </CardContent>
@@ -388,7 +606,7 @@ export function ApostaDetalhePage() {
               )}
             </CardContent>
           </Card>
-          <LinhaDoTempo aposta={a} />
+          <LinhaDoTempo aposta={a} concursos={concursos} />
         </div>
       </div>
     </>

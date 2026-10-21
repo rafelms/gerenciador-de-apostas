@@ -57,7 +57,7 @@ export async function carregarAposta(id: string) {
     .from('apostas')
     .select(
       `*, modalidades (slug, nome, cor_hex),
-       aposta_jogos (ordem, dezenas),
+       aposta_jogos (id, ordem, dezenas),
        participantes (id, nome, peso, eh_usuario, contribuicao_centavos, ordem)`,
     )
     .eq('id', id)

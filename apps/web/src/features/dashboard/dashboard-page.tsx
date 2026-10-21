@@ -30,7 +30,7 @@ import { carregarTotais, ultimasApostas } from './resumo'
 const porcentagem = (v: number | null) =>
   v === null ? '—' : v.toLocaleString('pt-BR', { style: 'percent', maximumFractionDigits: 1 })
 
-/** Dashboard v1 (F1.7): indicadores do mês atual + últimas apostas. Gráficos e seletor de período na fase 4. */
+/** Dashboard v1 (F1.7): indicadores do mês atual + últimas apostas. Recuperado real desde a fase 2; gráficos e seletor de período na fase 4. */
 export function DashboardPage() {
   const { perfil } = useAuth()
   const agora = toZonedTime(new Date(), FUSO)
@@ -96,7 +96,7 @@ export function DashboardPage() {
               titulo="Recuperado"
               icone={Trophy}
               valor={<MoneyText centavos={totais.data.recuperado} />}
-              detalhe="Prêmios líquidos (fase 2)"
+              detalhe="Prêmios líquidos (sua parte)"
             />
             <KpiCard
               titulo="Saldo"

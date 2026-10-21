@@ -79,7 +79,9 @@ export const router = createBrowserRouter([
           { path: '/exportar', lazy: async () => ({ Component: (await futuras()).ExportarPage }) },
           {
             path: '/resultados',
-            lazy: async () => ({ Component: (await futuras()).ResultadosPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/resultados/resultados-page')).ResultadosPage,
+            }),
           },
           {
             path: '/calendario',
@@ -91,7 +93,9 @@ export const router = createBrowserRouter([
           },
           {
             path: '/simulador-rateio',
-            lazy: async () => ({ Component: (await futuras()).SimuladorRateioPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/simulador/simulador-page')).SimuladorPage,
+            }),
           },
           {
             path: '/orcamento',
@@ -99,7 +103,10 @@ export const router = createBrowserRouter([
           },
           {
             path: '/notificacoes',
-            lazy: async () => ({ Component: (await futuras()).NotificacoesPage }),
+            lazy: async () => ({
+              Component: (await import('@/features/notificacoes/notificacoes-page'))
+                .NotificacoesPage,
+            }),
           },
           {
             path: '/configuracoes',
@@ -126,11 +133,16 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'resultados',
-                lazy: async () => ({ Component: (await futuras()).AdminResultadosPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/admin/resultados-page')).AdminResultadosPage,
+                }),
               },
               {
                 path: 'configuracoes',
-                lazy: async () => ({ Component: (await futuras()).AdminConfiguracoesPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/admin/configuracoes-sistema-page'))
+                    .AdminConfiguracoesPage,
+                }),
               },
             ],
           },
