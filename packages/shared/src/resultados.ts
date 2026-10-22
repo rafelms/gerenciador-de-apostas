@@ -107,6 +107,63 @@ export function normalizarConcursoCaixa(
 }
 
 // ---------------------------------------------------------------------------
+// Fonte ALTERNATIVA (pendência P4): API comunitária de código aberto que espelha a da
+// CAIXA, usada quando a CAIXA bloqueia a nuvem. Formato conferido em 22/10/2026:
+//   GET https://loteriascaixa-api.herokuapp.com/api/{slug}/latest    → último concurso
+//   GET https://loteriascaixa-api.herokuapp.com/api/{slug}/{numero}  → concurso específico
+//   Concurso inexistente responde HTTP 404.
+// ---------------------------------------------------------------------------
+export const URL_API_ALTERNATIVA = 'https://loteriascaixa-api.herokuapp.com/api'
+
+const respostaAlternativaSchema = z.object({
+  concurso: z.number().int().positive(),
+  data: dataBR,
+  dezenas: z.array(z.string()).nullable(),
+  premiacoes: z
+    .array(
+      z.object({
+        descricao: z.string(),
+        faixa: z.number().int(),
+        ganhadores: z.number().int().nonnegative(),
+        valorPremio: z.number().nonnegative(),
+      }),
+    )
+    .nullable(),
+  acumulou: z.boolean().nullable().optional(),
+  dataProximoConcurso: dataBR.nullable().optional().catch(null),
+  valorEstimadoProximoConcurso: z.number().nonnegative().nullable().optional(),
+})
+
+/**
+ * Resposta da API alternativa → formato da CAIXA → mesma normalização (e as mesmas
+ * validações de dezenas e faixas) de `normalizarConcursoCaixa`.
+ */
+export function normalizarConcursoAlternativo(
+  json: unknown,
+  regra: RegraModalidade,
+): ConcursoNormalizado {
+  const r = respostaAlternativaSchema.parse(json)
+  return normalizarConcursoCaixa(
+    {
+      numero: r.concurso,
+      dataApuracao: r.data,
+      listaDezenas: r.dezenas,
+      listaRateioPremio:
+        r.premiacoes?.map((p) => ({
+          descricaoFaixa: p.descricao,
+          faixa: p.faixa,
+          numeroDeGanhadores: p.ganhadores,
+          valorPremio: p.valorPremio,
+        })) ?? null,
+      acumulado: r.acumulou ?? null,
+      dataProximoConcurso: r.dataProximoConcurso ?? null,
+      valorEstimadoProximoConcurso: r.valorEstimadoProximoConcurso ?? null,
+    },
+    regra,
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Rateio no banco (concursos.rateio, jsonb snake_case):
 //   [{ "acertos": 6, "ganhadores": 0, "valor_centavos": 0 }, ...]
 // ---------------------------------------------------------------------------
