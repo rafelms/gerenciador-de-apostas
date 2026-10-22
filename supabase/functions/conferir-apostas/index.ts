@@ -54,7 +54,11 @@ Deno.serve(async (req) => {
       Deno.env.get('RESULTADOS_SOB_DEMANDA') === 'desligado'
         ? { futuros: 0, erro: undefined }
         : await buscarResultadosDaAposta(
-            { db: supabaseAdmin, urlApi: Deno.env.get('CAIXA_API_URL') || undefined },
+            {
+              db: supabaseAdmin,
+              urlApi: Deno.env.get('CAIXA_API_URL') || undefined,
+              urlAlternativa: Deno.env.get('API_ALTERNATIVA_URL') || undefined,
+            },
             entrada.data.aposta_id,
           )
     const r = await conferirAposta(supabaseAdmin, entrada.data.aposta_id)

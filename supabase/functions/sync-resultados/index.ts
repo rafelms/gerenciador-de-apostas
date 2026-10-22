@@ -1,5 +1,7 @@
 // Edge Function sync-resultados (seção 10.1)
-//   POST /sync-resultados           → sincroniza todas as modalidades (cron ou admin)
+//   POST /sync-resultados           → sincroniza todas as modalidades (cron ou admin). O cron
+//                                     pode mandar { respostasCaixa } já buscadas no GitHub Actions
+//   POST /sync-resultados/pendencias → (cron) concursos que as apostas precisam, por modalidade
 //   POST /sync-resultados/manual    → admin lança/edita um resultado à mão e dispara a conferência
 //   POST /sync-resultados/informar  → usuário informa o resultado de um concurso da PRÓPRIA aposta
 //                                     enquanto a API não traz o oficial (que tem prioridade)
@@ -15,10 +17,18 @@ import {
   type ResultadoManualInput,
 } from '../_shared/domain/schemas/resultados.ts'
 import { erro, json } from '../_shared/respostas.ts'
-import { gravarConcurso, sincronizar } from '../_shared/sincronizar.ts'
+import { gravarConcurso, pendencias, sincronizar } from '../_shared/sincronizar.ts'
 import { supabaseAdmin } from '../_shared/supabase-admin.ts'
 
 const informarSchema = z.object({ apostaId: z.uuid() })
+
+// Respostas da CAIXA que o cron buscou no GitHub Actions, por caminho ("/megasena/3070").
+const sincronizarSchema = z.object({
+  respostasCaixa: z
+    .record(z.string().regex(/^\/[a-z]+(\/\d+)?$/), z.unknown())
+    .refine((r) => Object.keys(r).length <= 200, 'Respostas demais.')
+    .optional(),
+})
 
 /** Resultado digitado (admin ou usuário) → formato gravado em `concursos`. */
 function concursoDaEntrada(r: ResultadoManualInput) {
@@ -187,11 +197,29 @@ Deno.serve(async (req) => {
       if (origem !== 'admin') return erro(req, 403, 'Acesso negado.')
       return await lancarManual(req)
     }
+    if (acao === 'pendencias') {
+      if (origem !== 'cron') return erro(req, 403, 'Acesso negado.')
+      return json(req, { modalidades: await pendencias(supabaseAdmin) })
+    }
     if (acao !== 'sync-resultados') return erro(req, 404, 'Ação desconhecida.')
+
+    // Só o cron (que tem o segredo) entrega respostas prontas da CAIXA.
+    let respostasCaixa: Record<string, unknown> | undefined
+    if (origem === 'cron') {
+      const lido = await lerCorpo(req)
+      const entrada = sincronizarSchema.safeParse(lido.ok ? lido.corpo : {})
+      if (!entrada.success) return erro(req, 400, 'Dados inválidos.')
+      respostasCaixa = entrada.data.respostasCaixa
+    }
     return json(
       req,
       await sincronizar(
-        { db: supabaseAdmin, urlApi: Deno.env.get('CAIXA_API_URL') || undefined },
+        {
+          db: supabaseAdmin,
+          urlApi: Deno.env.get('CAIXA_API_URL') || undefined,
+          urlAlternativa: Deno.env.get('API_ALTERNATIVA_URL') || undefined,
+          respostasCaixa,
+        },
         origem,
       ),
     )

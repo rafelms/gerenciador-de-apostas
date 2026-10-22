@@ -1,13 +1,19 @@
 // Sincronização de resultados (seção 10.1). Dependências injetáveis (fetch, espera)
 // para os testes simularem a API da CAIXA fora do ar.
+//
+// Pendência P4: a CAIXA responde 403 à nuvem do Supabase. Por isso cada concurso é
+// buscado, nesta ordem: (1) resposta da CAIXA que o cron já buscou no GitHub Actions,
+// (2) API da CAIXA daqui, (3) API alternativa, que espelha a da CAIXA.
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { conferirConcurso } from './conferir.ts'
 import { ehSlugSuportado, obterRegra } from './domain/regras/index.ts'
 import type { RegraModalidade } from './domain/regras/tipos.ts'
 import {
+  normalizarConcursoAlternativo,
   normalizarConcursoCaixa,
   rateioParaBanco,
+  URL_API_ALTERNATIVA,
   URL_API_CAIXA,
   type ConcursoNormalizado,
 } from './domain/resultados.ts'
@@ -23,6 +29,13 @@ export interface Dependencias {
   esperar?: (ms: number) => Promise<void>
   /** Base da API (testes apontam para um mock). Padrão: API pública da CAIXA. */
   urlApi?: string
+  /** Base da API alternativa. Padrão: `URL_API_ALTERNATIVA`. */
+  urlAlternativa?: string
+  /**
+   * Respostas da CAIXA já buscadas pelo cron no GitHub Actions, por caminho
+   * ("/megasena", "/megasena/3070"). Só o cron (com o segredo) pode entregá-las.
+   */
+  respostasCaixa?: Record<string, unknown>
 }
 
 export interface ResumoModalidade {
@@ -30,11 +43,14 @@ export interface ResumoModalidade {
   ultimo: number | null
   inseridos: number
   conferidos: number
+  /** De onde veio o último concurso. */
+  fonte?: FonteApi
   erro?: string
 }
 
 /** De onde veio o resultado. Só `api_caixa` é oficial; os outros são substituídos por ela. */
-export type FonteConcurso = 'api_caixa' | 'manual' | 'usuario'
+export type FonteConcurso = 'api_caixa' | 'api_alternativa' | 'manual' | 'usuario'
+type FonteApi = 'api_caixa' | 'api_alternativa'
 
 // A API responde 403 a partir da nuvem do Supabase (pendência P4). Cabeçalhos de
 // navegador, como os do próprio portal de loterias, para não parecer um robô.
@@ -106,8 +122,11 @@ export async function gravarConcurso(
     .maybeSingle<LinhaConcurso>()
 
   const rateio = c.rateio.length > 0 ? rateioParaBanco(c.rateio) : null
-  if (atual?.dezenas && !c.dezenas)
-    return { id: atual.id, novo: false, mudou: false, corrigido: false }
+  const semMudanca = { id: atual?.id ?? 0, novo: false, mudou: false, corrigido: false }
+  if (atual?.dezenas && !c.dezenas) return semMudanca
+  // A alternativa nunca rebaixa um resultado oficial completo.
+  if (fonte === 'api_alternativa' && atual?.fonte === 'api_caixa' && atual.dezenas && atual.rateio)
+    return semMudanca
 
   const mudou =
     !atual ||
@@ -144,19 +163,21 @@ export async function gravarConcurso(
 
 /**
  * Números de concurso que alguma aposta precisa e ainda não têm o resultado OFICIAL
- * completo. Resultados lançados à mão (admin ou usuário) entram de novo: a API tem
- * prioridade e os substitui assim que responder.
+ * completo. Resultados lançados à mão (admin ou usuário) ou vindos da API alternativa
+ * entram de novo: a CAIXA tem prioridade e os substitui assim que responder. Sem
+ * `ultimo`, inclui também os concursos futuros.
  */
 async function concursosNecessarios(
   db: SupabaseClient,
   modalidadeId: number,
-  ultimo: number,
+  ultimo?: number,
 ): Promise<number[]> {
-  const { data: pedidos, error } = await db
+  let consulta = db
     .from('aposta_concursos')
     .select('numero_concurso')
     .eq('modalidade_id', modalidadeId)
-    .lte('numero_concurso', ultimo)
+  if (ultimo !== undefined) consulta = consulta.lte('numero_concurso', ultimo)
+  const { data: pedidos, error } = await consulta
   if (error) throw new Error(`Falha ao ler concursos das apostas: ${error.message}`)
   const numeros = [...new Set((pedidos ?? []).map((p) => p.numero_concurso as number))]
   if (numeros.length === 0) return []
@@ -200,6 +221,74 @@ async function concursosPendentes(db: SupabaseClient, modalidadeId: number): Pro
   return (concursos ?? []).map((c) => c.id as number)
 }
 
+/**
+ * Para o cron no GitHub Actions: os concursos que as apostas precisam, por modalidade,
+ * para ele buscar na CAIXA de lá (o runner pode não ser bloqueado como a nuvem daqui).
+ */
+export async function pendencias(
+  db: SupabaseClient,
+): Promise<{ slug: string; numeros: number[] }[]> {
+  const { data: modalidades, error } = await db
+    .from('modalidades')
+    .select('id, slug')
+    .eq('ativa', true)
+    .order('id')
+  if (error) throw new Error(`Falha ao ler modalidades: ${error.message}`)
+  const lista = []
+  for (const m of modalidades ?? []) {
+    if (!ehSlugSuportado(m.slug)) continue
+    lista.push({ slug: m.slug, numeros: await concursosNecessarios(db, m.id) })
+  }
+  return lista
+}
+
+/** Estado de UMA execução: depois que a CAIXA falha, as próximas buscas vão direto para a alternativa. */
+interface Busca {
+  deps: Dependencias
+  caixaFora: boolean
+}
+
+const mensagemDe = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+/**
+ * Um concurso (sem número = o último), pela ordem de preferência da P4. O disjuntor
+ * (`caixaFora`) evita gastar 3 tentativas por concurso quando a CAIXA está bloqueada,
+ * o que estouraria o tempo da function. HTTP 500 da CAIXA é "concurso inexistente",
+ * não bloqueio, e não liga o disjuntor.
+ */
+async function buscarConcurso(
+  busca: Busca,
+  slug: string,
+  regra: RegraModalidade,
+  numero?: number,
+): Promise<{ concurso: ConcursoNormalizado; fonte: FonteApi }> {
+  const { deps } = busca
+  const caminho = numero === undefined ? `/${slug}` : `/${slug}/${numero}`
+  const pronta = deps.respostasCaixa?.[caminho]
+  if (pronta !== undefined) {
+    return { concurso: normalizarConcursoCaixa(pronta, regra), fonte: 'api_caixa' }
+  }
+
+  let erroCaixa = 'API da CAIXA fora do ar nesta execução'
+  if (!busca.caixaFora) {
+    try {
+      const json = await buscarJson(`${deps.urlApi ?? URL_API_CAIXA}${caminho}`, deps)
+      return { concurso: normalizarConcursoCaixa(json, regra), fonte: 'api_caixa' }
+    } catch (e) {
+      erroCaixa = mensagemDe(e)
+      if (!/HTTP 500\b/.test(erroCaixa)) busca.caixaFora = true
+    }
+  }
+
+  const alternativa = `${deps.urlAlternativa ?? URL_API_ALTERNATIVA}/${slug}/${numero ?? 'latest'}`
+  try {
+    const json = await buscarJson(alternativa, deps)
+    return { concurso: normalizarConcursoAlternativo(json, regra), fonte: 'api_alternativa' }
+  } catch (e) {
+    throw new Error(`${erroCaixa} · alternativa: ${mensagemDe(e)}`)
+  }
+}
+
 async function registrarLog(
   db: SupabaseClient,
   origem: 'cron' | 'admin' | 'manual',
@@ -214,28 +303,26 @@ async function registrarLog(
     ultimo_concurso: r.ultimo,
     inseridos: r.inseridos,
     conferidos: r.conferidos,
-    mensagem: r.erro?.slice(0, 500) ?? null,
+    mensagem:
+      r.erro?.slice(0, 500) ??
+      (r.fonte === 'api_alternativa' ? 'Via API alternativa (a CAIXA não respondeu).' : null),
   })
 }
 
 async function sincronizarModalidade(
-  deps: Dependencias,
+  busca: Busca,
   modalidade: { id: number; slug: string },
   regra: RegraModalidade,
 ): Promise<Omit<ResumoModalidade, 'slug'>> {
-  const { db } = deps
-  const esperar = deps.esperar ?? esperarPadrao
-  const base = deps.urlApi ?? URL_API_CAIXA
+  const { db } = busca.deps
+  const esperar = busca.deps.esperar ?? esperarPadrao
 
   // 1. Último concurso (também alimenta "próximo sorteio" e a sugestão de concurso).
-  const ultimo = normalizarConcursoCaixa(
-    await buscarJson(`${base}/${modalidade.slug}`, deps),
-    regra,
-  )
+  const { concurso: ultimo, fonte } = await buscarConcurso(busca, modalidade.slug, regra)
   const paraConferir = new Set<number>()
   const corrigidos = new Set<number>()
   let inseridos = 0
-  const gravadoUltimo = await gravarConcurso(db, modalidade.id, ultimo, 'api_caixa')
+  const gravadoUltimo = await gravarConcurso(db, modalidade.id, ultimo, fonte)
   if (gravadoUltimo.novo) inseridos++
   if (gravadoUltimo.mudou) paraConferir.add(gravadoUltimo.id)
   if (gravadoUltimo.corrigido) corrigidos.add(gravadoUltimo.id)
@@ -246,13 +333,12 @@ async function sincronizarModalidade(
     .slice(0, MAX_CONCURSOS_POR_EXECUCAO)
   const falhas: number[] = []
   for (const numero of necessarios) {
-    await esperar(INTERVALO_MS)
+    // A resposta entregue pelo cron já está aqui: não precisa esperar entre as chamadas.
+    if (busca.deps.respostasCaixa?.[`/${modalidade.slug}/${numero}`] === undefined)
+      await esperar(INTERVALO_MS)
     try {
-      const c = normalizarConcursoCaixa(
-        await buscarJson(`${base}/${modalidade.slug}/${numero}`, deps),
-        regra,
-      )
-      const g = await gravarConcurso(db, modalidade.id, c, 'api_caixa')
+      const r = await buscarConcurso(busca, modalidade.slug, regra, numero)
+      const g = await gravarConcurso(db, modalidade.id, r.concurso, r.fonte)
       if (g.novo) inseridos++
       if (g.mudou) paraConferir.add(g.id)
       if (g.corrigido) corrigidos.add(g.id)
@@ -273,6 +359,7 @@ async function sincronizarModalidade(
     ultimo: ultimo.numero,
     inseridos,
     conferidos,
+    fonte,
     ...(falhas.length > 0 ? { erro: `Concursos não obtidos: ${falhas.join(', ')}` } : {}),
   }
 }
@@ -298,7 +385,7 @@ export async function buscarResultadosDaAposta(
 ): Promise<ResumoBuscaAposta> {
   const { db } = deps
   const esperar = deps.esperar ?? esperarPadrao
-  const base = deps.urlApi ?? URL_API_CAIXA
+  const busca: Busca = { deps, caixaFora: false }
   const resumo: ResumoBuscaAposta = { buscados: 0, futuros: 0 }
 
   const { data: aposta } = await db
@@ -333,8 +420,8 @@ export async function buscarResultadosDaAposta(
   const corrigidos = new Set<number>()
   const falhas: number[] = []
   try {
-    const ultimo = normalizarConcursoCaixa(await buscarJson(`${base}/${slug}`, deps), regra)
-    const g = await gravarConcurso(db, aposta.modalidade_id, ultimo, 'api_caixa')
+    const { concurso: ultimo, fonte } = await buscarConcurso(busca, slug, regra)
+    const g = await gravarConcurso(db, aposta.modalidade_id, ultimo, fonte)
     if (g.mudou) paraConferir.add(g.id)
     if (g.corrigido) corrigidos.add(g.id)
     if (faltam.includes(ultimo.numero)) resumo.buscados++
@@ -344,11 +431,8 @@ export async function buscarResultadosDaAposta(
     for (const numero of sorteados) {
       await esperar(INTERVALO_MS)
       try {
-        const c = normalizarConcursoCaixa(
-          await buscarJson(`${base}/${slug}/${numero}`, deps),
-          regra,
-        )
-        const gc = await gravarConcurso(db, aposta.modalidade_id, c, 'api_caixa')
+        const r = await buscarConcurso(busca, slug, regra, numero)
+        const gc = await gravarConcurso(db, aposta.modalidade_id, r.concurso, r.fonte)
         if (gc.mudou) paraConferir.add(gc.id)
         if (gc.corrigido) corrigidos.add(gc.id)
         resumo.buscados++
@@ -380,11 +464,12 @@ export async function sincronizar(
   if (error) throw new Error(`Falha ao ler modalidades: ${error.message}`)
 
   const resumo: ResumoModalidade[] = []
+  const busca: Busca = { deps, caixaFora: false }
   for (const m of modalidades ?? []) {
     if (!ehSlugSuportado(m.slug)) continue
     let r: Omit<ResumoModalidade, 'slug'>
     try {
-      r = await sincronizarModalidade(deps, m, obterRegra(m.slug))
+      r = await sincronizarModalidade(busca, m, obterRegra(m.slug))
     } catch (e) {
       // Resiliência (seção 10.1): registra e segue; o admin pode lançar o resultado à mão.
       r = {
