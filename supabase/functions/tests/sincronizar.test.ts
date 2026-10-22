@@ -9,6 +9,7 @@ import {
   buscarJson,
   buscarResultadosDaAposta,
   gravarConcurso,
+  pendencias,
   sincronizar,
 } from '../_shared/sincronizar.ts'
 
@@ -459,6 +460,156 @@ Deno.test('prêmio informado à mão prevalece sobre o calculado', opcoes, async
       divisoes!.map((d) => d.liquido_centavos),
       [2500, 2500],
     )
+  } finally {
+    await limpar(userId, megaId)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Pendência P4: CAIXA bloqueada → respostas do cron (GitHub Actions) e API alternativa
+// ---------------------------------------------------------------------------
+
+/** A mesma resposta da Mega no formato da API alternativa. */
+function respostaAlternativa(numero: number, dezenas: string[]) {
+  const caixa = respostaMega(numero, dezenas)
+  return {
+    loteria: 'megasena',
+    concurso: caixa.numero,
+    data: caixa.dataApuracao,
+    dezenas,
+    premiacoes: caixa.listaRateioPremio.map(
+      (f: {
+        descricaoFaixa: string
+        faixa: number
+        numeroDeGanhadores: number
+        valorPremio: number
+      }) => ({
+        descricao: f.descricaoFaixa,
+        faixa: f.faixa,
+        ganhadores: f.numeroDeGanhadores,
+        valorPremio: f.valorPremio,
+      }),
+    ),
+    acumulou: false,
+  }
+}
+
+/** CAIXA (api.test) bloqueada com 403; a alternativa (alt.test) responde só a Mega. */
+function caixaBloqueada(chamadas: string[] = []): typeof fetch {
+  return (async (entrada: RequestInfo | URL) => {
+    const url = String(entrada)
+    chamadas.push(url)
+    if (url.startsWith('https://api.test')) return new Response('', { status: 403 })
+    if (url === 'https://alt.test/megasena/latest')
+      return Response.json(respostaAlternativa(ULTIMO, ['01', '02', '03', '04', '05', '06']))
+    if (url === `https://alt.test/megasena/${ANTERIOR}`)
+      return Response.json(respostaAlternativa(ANTERIOR, ['03', '17', '22', '31', '40', '58']))
+    return new Response('', { status: 404 })
+  }) as typeof fetch
+}
+
+const DEPS_P4 = {
+  esperar: semEspera,
+  urlApi: 'https://api.test',
+  urlAlternativa: 'https://alt.test',
+}
+
+Deno.test(
+  'CAIXA bloqueada: usa a API alternativa, confere e para de insistir na CAIXA',
+  opcoes,
+  async () => {
+    const { apostaId, userId, megaId } = await criarCenario()
+    try {
+      const chamadas: string[] = []
+      const r = await sincronizar({ db, fetch: caixaBloqueada(chamadas), ...DEPS_P4 }, 'cron')
+
+      const mega = r.modalidades.find((m) => m.slug === 'megasena')!
+      assertEquals(mega.erro, undefined)
+      assertEquals(mega.fonte, 'api_alternativa')
+      // Disjuntor: só a 1ª busca tenta a CAIXA (3 tentativas); as outras vão direto à alternativa.
+      assertEquals(chamadas.filter((u) => u.startsWith('https://api.test')).length, 3)
+
+      const { data: concurso } = await db
+        .from('concursos')
+        .select('fonte, dezenas')
+        .eq('modalidade_id', megaId)
+        .eq('numero', ANTERIOR)
+        .single()
+      assertEquals(concurso!.fonte, 'api_alternativa')
+      assertEquals(concurso!.dezenas, [3, 17, 22, 31, 40, 58])
+      const { data: aposta } = await db.from('apostas').select('status').eq('id', apostaId).single()
+      assertEquals(aposta!.status, 'premiada')
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
+
+Deno.test(
+  'respostas da CAIXA entregues pelo cron: gravadas como oficiais, sem chamar API nenhuma',
+  opcoes,
+  async () => {
+    const { userId, megaId } = await criarCenario()
+    try {
+      // A pendência que o cron vai buscar na CAIXA a partir do runner.
+      const lista = await pendencias(db)
+      assert(lista.find((m) => m.slug === 'megasena')!.numeros.includes(ANTERIOR))
+
+      const chamadas: string[] = []
+      const respostasCaixa = {
+        '/megasena': respostaMega(ULTIMO, ['01', '02', '03', '04', '05', '06']),
+        [`/megasena/${ANTERIOR}`]: respostaMega(ANTERIOR, ['03', '17', '22', '31', '40', '58']),
+      }
+      const r = await sincronizar(
+        { db, fetch: caixaBloqueada(chamadas), ...DEPS_P4, respostasCaixa },
+        'cron',
+      )
+      assertEquals(r.modalidades.find((m) => m.slug === 'megasena')!.fonte, 'api_caixa')
+      assert(!chamadas.some((u) => u.includes('/megasena')), 'nenhuma chamada para a Mega')
+
+      const { data: concurso } = await db
+        .from('concursos')
+        .select('fonte')
+        .eq('modalidade_id', megaId)
+        .eq('numero', ANTERIOR)
+        .single()
+      assertEquals(concurso!.fonte, 'api_caixa')
+      const depois = await pendencias(db)
+      assert(!depois.find((m) => m.slug === 'megasena')!.numeros.includes(ANTERIOR))
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
+
+Deno.test('API alternativa não rebaixa um resultado oficial completo', opcoes, async () => {
+  const { userId, megaId } = await criarCenario()
+  try {
+    const oficial = {
+      numero: ANTERIOR,
+      dataSorteio: '2026-10-14',
+      dezenas: [3, 17, 22, 31, 40, 58],
+      rateio: [{ acertos: 6, ganhadores: 1, valorCentavos: 100 }],
+      acumulado: false,
+      dataProximo: null,
+      valorEstimadoProximoCentavos: null,
+    }
+    await gravarConcurso(db, megaId, oficial, 'api_caixa')
+    const g = await gravarConcurso(
+      db,
+      megaId,
+      { ...oficial, dezenas: [1, 2, 3, 4, 5, 6] },
+      'api_alternativa',
+    )
+    assertEquals(g.mudou, false)
+    const { data: concurso } = await db
+      .from('concursos')
+      .select('fonte, dezenas')
+      .eq('modalidade_id', megaId)
+      .eq('numero', ANTERIOR)
+      .single()
+    assertEquals(concurso!.fonte, 'api_caixa')
+    assertEquals(concurso!.dezenas, [3, 17, 22, 31, 40, 58])
   } finally {
     await limpar(userId, megaId)
   }

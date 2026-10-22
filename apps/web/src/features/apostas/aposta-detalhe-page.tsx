@@ -168,6 +168,9 @@ function Jogos({
               {concurso.resultado.fonte === 'manual' && (
                 <span className="text-muted-foreground"> · lançado manualmente</span>
               )}
+              {concurso.resultado.fonte === 'api_alternativa' && (
+                <span className="text-muted-foreground"> · via fonte alternativa</span>
+              )}
               {naoOficial && (
                 <span className="text-alerta"> · informado por um usuário, não oficial</span>
               )}

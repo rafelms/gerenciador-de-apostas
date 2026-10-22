@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { regras } from '../src/regras/index.ts'
 import {
   dataBrParaIso,
+  normalizarConcursoAlternativo,
   normalizarConcursoCaixa,
   rateioDoBanco,
   rateioParaBanco,
@@ -15,10 +16,11 @@ import {
   resultadoManualSchema,
 } from '../src/schemas/resultados.ts'
 
-// Respostas FICTÍCIAS com a estrutura real da API (confirmada em 21/10/2026).
-function fixture(slug: string): Record<string, unknown> {
+// Respostas FICTÍCIAS com a estrutura real das APIs (CAIXA: 21/10/2026; alternativa:
+// 22/10/2026). As da alternativa têm os mesmos dados das da CAIXA.
+function fixture(slug: string, api: 'caixa' | 'alternativa' = 'caixa'): Record<string, unknown> {
   return JSON.parse(
-    readFileSync(new URL(`./fixtures/api-caixa-${slug}.json`, import.meta.url), 'utf8'),
+    readFileSync(new URL(`./fixtures/api-${api}-${slug}.json`, import.meta.url), 'utf8'),
   )
 }
 
@@ -109,6 +111,21 @@ describe('normalizarConcursoCaixa', () => {
         regras.megasena,
       ),
     ).toThrow(/Dezenas inesperadas/)
+  })
+})
+
+describe('normalizarConcursoAlternativo', () => {
+  it.each(['megasena', 'lotofacil', 'quina', 'lotomania'] as const)(
+    '%s: mesmo resultado que a CAIXA para os mesmos dados',
+    (slug) => {
+      expect(normalizarConcursoAlternativo(fixture(slug, 'alternativa'), regras[slug])).toEqual(
+        normalizarConcursoCaixa(fixture(slug), regras[slug]),
+      )
+    },
+  )
+
+  it('rejeita resposta fora do formato', () => {
+    expect(() => normalizarConcursoAlternativo({ status: 404 }, regras.megasena)).toThrow()
   })
 })
 

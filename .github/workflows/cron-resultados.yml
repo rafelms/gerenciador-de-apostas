@@ -20,16 +20,19 @@ jobs:
     timeout-minutes: 10
     environment: producao
     steps:
-      - name: Chamar sync-resultados
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # A CAIXA bloqueia a nuvem do Supabase (pendência P4): o runner busca os resultados
+      # e os entrega à function; se a CAIXA bloquear o runner também, a function usa a API
+      # alternativa. O log tem só contagens e o resumo por modalidade (sem dados de usuários).
+      - name: Buscar na CAIXA e sincronizar
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
-        run: |
-          # O corpo de resposta tem só o resumo por modalidade (sem dados de usuários).
-          status=$(curl -sS -o resposta.json -w '%{http_code}' --max-time 300 \
-            -X POST "$SUPABASE_FUNCTIONS_URL/sync-resultados" \
-            -H "x-cron-secret: $CRON_SECRET" \
-            -H 'Content-Type: application/json' -d '{}')
-          cat resposta.json; echo
-          # Falha de uma modalidade NÃO derruba o job (fica no sync_logs); só erro geral falha.
-          test "$status" = "200"
+        run: node scripts/buscar-resultados-caixa.mjs

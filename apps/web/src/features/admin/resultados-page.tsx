@@ -100,6 +100,7 @@ function Sincronizar() {
 
 const rotulosFonte: Record<string, string> = {
   api_caixa: 'da API',
+  api_alternativa: 'da API alternativa',
   manual: 'lançado à mão',
   usuario: 'informado por um usuário',
 }

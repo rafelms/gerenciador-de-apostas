@@ -1,0 +1,87 @@
+{
+  "loteria": "lotofacil",
+  "concurso": 3521,
+  "data": "13/10/2026",
+  "local": "LOCAL FICTÍCIO",
+  "concursoEspecial": false,
+  "dezenasOrdemSorteio": [
+    "25",
+    "23",
+    "21",
+    "20",
+    "18",
+    "16",
+    "14",
+    "12",
+    "10",
+    "09",
+    "07",
+    "05",
+    "04",
+    "02",
+    "01"
+  ],
+  "dezenas": [
+    "01",
+    "02",
+    "04",
+    "05",
+    "07",
+    "09",
+    "10",
+    "12",
+    "14",
+    "16",
+    "18",
+    "20",
+    "21",
+    "23",
+    "25"
+  ],
+  "trevos": [],
+  "timeCoracao": null,
+  "mesSorte": null,
+  "premiacoes": [
+    {
+      "descricao": "15 acertos",
+      "faixa": 1,
+      "ganhadores": 2,
+      "valorPremio": 1500000.1
+    },
+    {
+      "descricao": "14 acertos",
+      "faixa": 2,
+      "ganhadores": 301,
+      "valorPremio": 1876.5
+    },
+    {
+      "descricao": "13 acertos",
+      "faixa": 3,
+      "ganhadores": 9012,
+      "valorPremio": 35
+    },
+    {
+      "descricao": "12 acertos",
+      "faixa": 4,
+      "ganhadores": 110234,
+      "valorPremio": 14
+    },
+    {
+      "descricao": "11 acertos",
+      "faixa": 5,
+      "ganhadores": 601234,
+      "valorPremio": 7
+    }
+  ],
+  "estadosPremiados": [],
+  "observacao": "",
+  "acumulou": false,
+  "proximoConcurso": 3522,
+  "dataProximoConcurso": "14/10/2026",
+  "localGanhadores": [],
+  "valorArrecadado": 19642000,
+  "valorAcumuladoConcurso_0_5": 326294.63,
+  "valorAcumuladoConcursoEspecial": 20057436.56,
+  "valorAcumuladoProximoConcurso": 0,
+  "valorEstimadoProximoConcurso": 1800000
+}
