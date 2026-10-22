@@ -62,7 +62,9 @@ Edge Functions (com o Supabase local no ar), em `supabase/functions/`:
 
 ## Resultados e conferência
 
-- `sync-resultados` (cron 22h30 e 9h BRT, ou "Sincronizar agora" no admin) busca na API pública da CAIXA o último concurso de cada modalidade e os concursos que as apostas precisam, grava em `concursos` e confere as apostas. Falhas ficam no log (`/admin/resultados`) e o job não quebra. Se a API cair, o admin lança o resultado à mão na mesma tela.
+- `sync-resultados` (cron 22h30 e 9h BRT, ou "Sincronizar agora" no admin) busca o último concurso de cada modalidade e os concursos que as apostas precisam, grava em `concursos` e confere as apostas. Falhas ficam no log (`/admin/resultados`) e o job não quebra.
+- **Fontes, em ordem** (a CAIXA bloqueia a nuvem do Supabase, pendência P4 da spec): (1) respostas da CAIXA buscadas pelo próprio cron no runner do GitHub (`scripts/buscar-resultados-caixa.mjs`); (2) API da CAIXA, a partir da function; (3) API alternativa, um espelho comunitário da CAIXA (`fonte = 'api_alternativa'`). Só a CAIXA é oficial: o que vem de outra fonte é buscado de novo e substituído quando a CAIXA responder.
+- Sem nenhuma fonte, o admin lança o resultado à mão em `/admin/resultados`, e qualquer usuário pode **informar o resultado** do concurso da própria aposta (fica marcado como não oficial).
 - `conferir-apostas` grava conferência, prêmio (bruto, IR e líquido, com o snapshot da regra) e a divisão entre os participantes, e notifica o usuário (Realtime). É idempotente. O front a chama depois de criar ou editar uma aposta.
 - IR, isenção, base do IR (cota/aposta), interpretação do rateio da API (bruto/líquido), prazo de resgate e preços ficam em `/admin/configuracoes`.
 
@@ -75,13 +77,17 @@ Edge Functions (com o Supabase local no ar), em `supabase/functions/`:
 - Fixtures de teste são **sempre fictícias**. Nunca commite comprovantes reais.
 - Front-end: antes de mexer em telas, consulte a skill `ui-ux-pro-max` (spec, seção 0).
 
-## Deploy (quando for para produção)
+## Deploy (produção)
 
-1. **Supabase:** crie o projeto, desative o cadastro público (Auth → Sign In / Providers → _Allow new users to sign up_ desligado), habilite MFA TOTP e ajuste _Site URL_ e _Redirect URLs_ para o domínio da Vercel. Copie os templates de `supabase/templates/` para os e-mails de convite e recuperação.
-2. **GitHub secrets:** `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, `CRON_SECRET`, `SUPABASE_FUNCTIONS_URL`. O workflow `deploy-supabase.yml` aplica migrations e publica as functions a cada push na `main`.
-3. **Supabase secrets** (functions): `supabase secrets set ALLOWED_ORIGIN=https://seu-dominio.vercel.app CRON_SECRET=...` (o mesmo `CRON_SECRET` do GitHub; `SUPABASE_FUNCTIONS_URL` = `https://<ref>.supabase.co/functions/v1`). `CAIXA_API_URL` é opcional e só serve para apontar para outra fonte de resultados.
-4. **Vercel:** importe o repositório com _Root Directory_ = `apps/web` e defina `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (chave **pública**; nunca a secret/service role).
-5. **Primeiro admin:** crie o usuário em Auth → Users → _Invite user_ e promova pelo SQL Editor:
+A produção está no ar (Supabase + Vercel). Para montar de novo, nesta ordem (detalhes e problemas já vistos em [docs/sessao-2026-10-21.md](docs/sessao-2026-10-21.md), seção 11):
+
+1. **Supabase:** crie o projeto, desative o cadastro público (Auth → Sign In / Providers → _Allow new users to sign up_ desligado), habilite MFA TOTP e ajuste _Site URL_ e _Redirect URLs_ para o domínio da Vercel. Se ligar a integração com o GitHub, deixe **desligados** o deploy automático e o _branching_ (quem publica é o `deploy-supabase.yml`).
+2. **E-mail:** no plano Free, os templates só ficam editáveis com **SMTP próprio** (Resend, Brevo…), e o e-mail embutido só envia para membros da organização. Configure o SMTP e copie os templates de `supabase/templates/` para o convite e a recuperação de senha.
+3. **GitHub** (environment `producao`, só a `main`): `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` (20 letras minúsculas, sem URL), `SUPABASE_DB_PASSWORD`, `CRON_SECRET` e `SUPABASE_FUNCTIONS_URL` (`https://<ref>.supabase.co/functions/v1`, sem `/` no fim). O `deploy-supabase.yml` aplica as migrations e publica as functions a cada push na `main` que mexe em `supabase/` ou no shared.
+4. **Supabase secrets** (functions): `ALLOWED_ORIGIN=https://seu-dominio.vercel.app` e o mesmo `CRON_SECRET` do GitHub. Opcionais: `CAIXA_API_URL` e `API_ALTERNATIVA_URL`, para trocar as fontes de resultados sem deploy.
+5. **Vercel:** importe o repositório com _Root Directory_ = `apps/web` e defina `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (chave **pública**; nunca a secret/service role) como variáveis do tipo **Config**. O Vite grava os valores no build: depois de criar ou mudar, faça um _Redeploy_.
+6. **Primeiro deploy e cron:** rode **Actions → Deploy Supabase** e depois **Actions → Cron — resultados** à mão; o resumo do cron diz, por modalidade, de que fonte veio o último concurso.
+7. **Primeiro admin** (sem depender de e-mail): Auth → Users → _Add user_ → _Create new user_, com senha e _Auto Confirm User_; depois promova pelo SQL Editor:
 
    ```sql
    update public.profiles set papel = 'admin' where id = (select id from auth.users where email = 'seu@email.com');

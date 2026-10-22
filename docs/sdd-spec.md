@@ -323,7 +323,7 @@ create table concursos (
   acumulado boolean,
   data_proximo date,
   valor_estimado_proximo_centavos bigint,
-  fonte text not null default 'api_caixa',   -- 'api_caixa' | 'manual' (admin) | 'usuario' (não oficial)
+  fonte text not null default 'api_caixa',   -- 'api_caixa' | 'api_alternativa' | 'manual' (admin) | 'usuario' (não oficial)
   sincronizado_em timestamptz,
   unique (modalidade_id, numero)
 );
@@ -667,6 +667,12 @@ calcularIR(base, cfg):
 ### 10.1 `sync-resultados`
 - **Gatilho:** GitHub Actions (cron) com header `x-cron-secret`, ou botão "Sincronizar agora" do admin.
 - **Fonte:** `https://servicebus2.caixa.gov.br/portaldeloterias/api/{slug}/{numero?}` (API pública **não oficial** do portal). Sem número = último concurso.
+- **Ordem de busca de cada concurso** (pendência P4, a CAIXA bloqueia a nuvem do Supabase):
+  1. resposta da CAIXA **já buscada pelo cron no GitHub Actions** (`scripts/buscar-resultados-caixa.mjs`: pede `POST /sync-resultados/pendencias`, busca na CAIXA a partir do runner e manda `{ respostasCaixa }` no `POST /sync-resultados`; só o cron, com o segredo, pode entregá-las);
+  2. API da CAIXA, a partir da function;
+  3. **API alternativa** `https://loteriascaixa-api.herokuapp.com/api/{slug}/{latest|numero}` (espelho comunitário de código aberto), gravada com `fonte = 'api_alternativa'`.
+  - Disjuntor: quando a CAIXA falha numa execução (exceto HTTP 500, que é concurso inexistente), as buscas seguintes da mesma execução vão direto para a alternativa, para não estourar o tempo da function.
+  - A alternativa nunca sobrescreve um resultado `api_caixa` completo. Como não é oficial, o concurso continua "necessário" e é substituído pelo da CAIXA quando ela responder.
 - **Algoritmo:**
   1. Para cada modalidade ativa: buscar o último concurso.
   2. Calcular os concursos **necessários** = números em `aposta_concursos` sem resultado **oficial** completo em `concursos` (sem dezenas/rateio ou com `fonte` diferente de `api_caixa`) e ≤ último número. A API tem prioridade: resultado lançado à mão (admin ou usuário) é buscado de novo e substituído pelo oficial.
@@ -1135,7 +1141,7 @@ Dados de teste: **sempre fictícios**. Nunca commitar comprovantes reais.
 | P1 | O `valorPremio` do rateio da API é bruto ou líquido? Validar com um prêmio real recebido | `bruto` (configurável) |
 | P2 | Em bolão, o IR é apurado por cota ou pela aposta inteira? | `cota` (configurável) |
 | P3 | Amostras de comprovante de aposta simples e de bolão de Lotofácil/Quina | só o parser do Apêndice A |
-| P4 | A API da CAIXA responde a partir do Deno (TLS/headers)? Testar na F2.3 | Local: responde (TLS ok). **Produção (21/10): HTTP 403** a partir das Edge Functions do Supabase, provavelmente bloqueio por IP de nuvem. Mitigações: cabeçalhos de navegador (a confirmar no próximo cron), resultado manual do admin e resultado informado pelo usuário. Se o 403 continuar: avaliar buscar a partir de outro lugar ou fonte alternativa |
+| P4 | A API da CAIXA responde a partir do Deno (TLS/headers)? Testar na F2.3 | Local: responde (TLS ok). **Produção (21/10): HTTP 403** a partir das Edge Functions do Supabase, mesmo com cabeçalhos de navegador: bloqueio por IP de nuvem. A API aceita CORS (`*`). **Solução (22/10):** o cron busca na CAIXA a partir do runner do GitHub Actions e, se falhar, a function usa a API alternativa (10.1). Restam o resultado manual do admin e o informado pelo usuário. A confirmar: se o runner do GitHub também é bloqueado |
 | P5 | Limites de bolão (mín. de cotas, valor mínimo) de Lotofácil e Quina | colunas nulas, sem validar |
 | P6 | Backup automático mensal | apenas "Exportar tudo" |
 
