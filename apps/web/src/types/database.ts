@@ -123,17 +123,23 @@ isOneToOne: false
                   ]
                 },"apostas": {
                   Row: {
-                    "bolao_cotas_usuario": number | null,"bolao_numero_cota": number | null,"bolao_total_cotas": number | null,"comprovante_hash": string | null,"concurso_inicial": number,"created_at": string,"data_aposta": string,"id": string,"local_compra": string | null,"modalidade_id": number,"observacao": string | null,"origem": Database["public"]['Enums']["origem_aposta"],"qtd_concursos": number,"status": Database["public"]['Enums']["status_aposta"],"tarifa_centavos": number,"tipo": Database["public"]['Enums']["tipo_aposta"],"updated_at": string,"user_id": string,"valor_cota_centavos": number | null,"valor_pago_centavos": number
+                    "bolao_cotas_usuario": number | null,"bolao_numero_cota": number | null,"bolao_total_cotas": number | null,"comprovante_hash": string | null,"concurso_inicial": number,"created_at": string,"data_aposta": string,"id": string,"importacao_id": string | null,"local_compra": string | null,"modalidade_id": number,"observacao": string | null,"origem": Database["public"]['Enums']["origem_aposta"],"qtd_concursos": number,"status": Database["public"]['Enums']["status_aposta"],"tarifa_centavos": number,"tipo": Database["public"]['Enums']["tipo_aposta"],"updated_at": string,"user_id": string,"valor_cota_centavos": number | null,"valor_pago_centavos": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "bolao_cotas_usuario"?: number | null,"bolao_numero_cota"?: number | null,"bolao_total_cotas"?: number | null,"comprovante_hash"?: string | null,"concurso_inicial": number,"created_at"?: string,"data_aposta": string,"id"?: string,"local_compra"?: string | null,"modalidade_id": number,"observacao"?: string | null,"origem"?: Database["public"]['Enums']["origem_aposta"],"qtd_concursos"?: number,"status"?: Database["public"]['Enums']["status_aposta"],"tarifa_centavos"?: number,"tipo": Database["public"]['Enums']["tipo_aposta"],"updated_at"?: string,"user_id"?: string,"valor_cota_centavos"?: number | null,"valor_pago_centavos": number
+                    "bolao_cotas_usuario"?: number | null,"bolao_numero_cota"?: number | null,"bolao_total_cotas"?: number | null,"comprovante_hash"?: string | null,"concurso_inicial": number,"created_at"?: string,"data_aposta": string,"id"?: string,"importacao_id"?: string | null,"local_compra"?: string | null,"modalidade_id": number,"observacao"?: string | null,"origem"?: Database["public"]['Enums']["origem_aposta"],"qtd_concursos"?: number,"status"?: Database["public"]['Enums']["status_aposta"],"tarifa_centavos"?: number,"tipo": Database["public"]['Enums']["tipo_aposta"],"updated_at"?: string,"user_id"?: string,"valor_cota_centavos"?: number | null,"valor_pago_centavos": number
                   }
                   Update: {
-                    "bolao_cotas_usuario"?: number | null,"bolao_numero_cota"?: number | null,"bolao_total_cotas"?: number | null,"comprovante_hash"?: string | null,"concurso_inicial"?: number,"created_at"?: string,"data_aposta"?: string,"id"?: string,"local_compra"?: string | null,"modalidade_id"?: number,"observacao"?: string | null,"origem"?: Database["public"]['Enums']["origem_aposta"],"qtd_concursos"?: number,"status"?: Database["public"]['Enums']["status_aposta"],"tarifa_centavos"?: number,"tipo"?: Database["public"]['Enums']["tipo_aposta"],"updated_at"?: string,"user_id"?: string,"valor_cota_centavos"?: number | null,"valor_pago_centavos"?: number
+                    "bolao_cotas_usuario"?: number | null,"bolao_numero_cota"?: number | null,"bolao_total_cotas"?: number | null,"comprovante_hash"?: string | null,"concurso_inicial"?: number,"created_at"?: string,"data_aposta"?: string,"id"?: string,"importacao_id"?: string | null,"local_compra"?: string | null,"modalidade_id"?: number,"observacao"?: string | null,"origem"?: Database["public"]['Enums']["origem_aposta"],"qtd_concursos"?: number,"status"?: Database["public"]['Enums']["status_aposta"],"tarifa_centavos"?: number,"tipo"?: Database["public"]['Enums']["tipo_aposta"],"updated_at"?: string,"user_id"?: string,"valor_cota_centavos"?: number | null,"valor_pago_centavos"?: number
                   }
                   Relationships: [
                     {
+      foreignKeyName: "apostas_importacao_id_fkey"
+      columns: ["importacao_id"]
+isOneToOne: false
+      referencedRelation: "importacoes"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "apostas_modalidade_id_fkey"
       columns: ["modalidade_id"]
 isOneToOne: false
@@ -218,6 +224,26 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"importacoes": {
+                  Row: {
+                    "created_at": string,"id": string,"nome_arquivo": string | null,"origem": Database["public"]['Enums']["origem_aposta"],"qtd_apostas": number,"qtd_erros": number,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"nome_arquivo"?: string | null,"origem": Database["public"]['Enums']["origem_aposta"],"qtd_apostas": number,"qtd_erros"?: number,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"nome_arquivo"?: string | null,"origem"?: Database["public"]['Enums']["origem_aposta"],"qtd_apostas"?: number,"qtd_erros"?: number,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "importacoes_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"modalidade_precos": {
                   Row: {
@@ -448,6 +474,9 @@ isOneToOne: false
                            },
 "fn_revogar_sessoes":
 { Args: { "p_user_id": string }; Returns: undefined
+                           },
+"importar_apostas":
+{ Args: { "p_apostas": Json,"p_nome_arquivo"?: string,"p_origem": Database["public"]['Enums']["origem_aposta"],"p_qtd_erros"?: number }; Returns: Json
                            },
 "salvar_aposta":
 { Args: { "p_aposta": Json,"p_id"?: string }; Returns: string
