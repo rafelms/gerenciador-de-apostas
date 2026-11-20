@@ -38,7 +38,7 @@ jobs:
       - uses: supabase/setup-cli@v3
         with:
           # A mesma versão do devDependency (package.json), para o deploy não divergir do CI.
-          version: 2.122.1
+          version: 2.121.0
 
       - name: Cópia do shared para as Edge Functions está em dia
         run: node scripts/sync-shared.mjs --check
