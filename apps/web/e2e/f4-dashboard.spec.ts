@@ -239,3 +239,94 @@ test.describe('Calendário (F4.3)', () => {
     ).toContainText('R$ 1.000,00')
   })
 })
+
+/** Hoje no fuso de São Paulo (yyyy-mm-dd): o orçamento é do mês corrente. */
+function hojeSp() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
+
+test.describe('Orçamento (F4.4)', () => {
+  test('R$ 100: aposta que leva a R$ 85 avisa 80% uma vez; até R$ 90 não avisa de novo', async ({
+    page,
+  }, info) => {
+    const { email } = await criarUsuario('membro')
+    await entrarPelaTela(page, email)
+    await expect(page).toHaveURL('/')
+    const cliente = clienteAnonimo()
+    await cliente.auth.signInWithPassword({ email, password: SENHA_TESTE })
+    const apostar = async (valor: number, concurso: number) => {
+      const { error } = await cliente.rpc('salvar_aposta', {
+        p_aposta: {
+          modalidade_slug: 'megasena',
+          tipo: 'simples',
+          concurso_inicial: concurso,
+          qtd_concursos: 1,
+          data_aposta: hojeSp(),
+          valor_pago_centavos: valor,
+          jogos: [[1, 2, 3, 4, 5, 6]],
+          participantes: [],
+        } as never,
+      })
+      if (error) throw error
+    }
+
+    // Sem orçamento: o dashboard só convida.
+    await expect(page.getByRole('link', { name: 'Defina um orçamento' })).toBeVisible()
+
+    await page.goto('/orcamento')
+    await expect(page.getByText('Nenhum limite neste mês')).toBeVisible()
+    await page
+      .getByLabel('Para', { exact: true })
+      .selectOption({ label: 'Geral (todas as modalidades)' })
+    await page.getByLabel('Limite do mês').fill('100,00')
+    await page.getByRole('button', { name: 'Adicionar limite' }).click()
+    await expect(page.getByText('Limite criado.')).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: 'Orçamento geral' })).toHaveAttribute(
+      'aria-valuetext',
+      'R$ 0,00 de R$ 100,00 (0%)',
+    )
+
+    await apostar(8500, 4001)
+    const sino = page.getByRole('banner').getByRole('link', { name: /^Notificações/ })
+    await expect(sino).toHaveAccessibleName('Notificações, 1 não lida', { timeout: 5000 })
+    await apostar(500, 4002)
+
+    await page.goto('/')
+    const barra = page.getByRole('progressbar', { name: 'Orçamento geral' })
+    await expect(barra).toHaveAttribute('aria-valuetext', 'R$ 90,00 de R$ 100,00 (90%)')
+    await expect(page.getByRole('region', { name: /^Orçamento de / })).toContainText(
+      'Restam R$ 10,00',
+    )
+
+    await page.goto('/notificacoes')
+    await expect(page.getByText('Você usou 80% do orçamento geral de')).toHaveCount(1)
+    await expect(
+      page.getByText('Você usou R$ 85,00 de R$ 100,00 este mês.', { exact: false }),
+    ).toBeVisible()
+    await expect(sino).toHaveAccessibleName('Notificações, 1 não lida')
+
+    // No formulário (desktop, tudo numa página; no celular é a etapa de valores),
+    // o orçamento do mês da aposta aparece junto do valor.
+    if (info.project.name === 'desktop') {
+      await page.goto('/apostas/nova')
+      await expect(page.getByRole('progressbar', { name: 'Orçamento geral' })).toHaveAttribute(
+        'aria-valuetext',
+        'R$ 90,00 de R$ 100,00 (90%)',
+      )
+    }
+
+    // Alterar e excluir o limite.
+    await page.goto('/orcamento')
+    await page.getByRole('button', { name: 'Alterar limite' }).click()
+    await page.getByLabel('Novo limite (Geral)').fill('200,00')
+    await page.getByRole('button', { name: 'Salvar' }).click()
+    await expect(page.getByRole('progressbar', { name: 'Orçamento geral' })).toHaveAttribute(
+      'aria-valuetext',
+      'R$ 90,00 de R$ 200,00 (45%)',
+    )
+    await semRolagemHorizontal(page)
+    await page.getByRole('button', { name: 'Excluir o limite Geral' }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Excluir' }).click()
+    await expect(page.getByText('Nenhum limite neste mês')).toBeVisible()
+  })
+})

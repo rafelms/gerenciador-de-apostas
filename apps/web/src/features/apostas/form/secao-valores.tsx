@@ -6,7 +6,9 @@ import { Campo } from '@/components/campo'
 import { InputDinheiro } from '@/components/input-dinheiro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { rotuloMes } from '@/features/calendario/calendario'
 import type { Modalidade } from '@/features/modalidades/use-modalidades'
+import { ResumoOrcamento } from '@/features/orcamento/barra-orcamento'
 import { avisos, tarifaAcimaDoLimite, valorCalculado, type FormAposta } from './estado'
 
 export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefined }) {
@@ -102,6 +104,15 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
           }
         />
       </Campo>
+
+      {/^\d{4}-\d{2}-\d{2}$/.test(form.dataAposta) && (
+        <ResumoOrcamento
+          mes={form.dataAposta.slice(0, 7)}
+          modalidadeId={modalidade?.id ?? null}
+          titulo={`Seu orçamento de ${rotuloMes(form.dataAposta.slice(0, 7)).split(' de ')[0]}`}
+          className="rounded-lg border p-3"
+        />
+      )}
 
       {listaAvisos.length > 0 && (
         <ul className="grid gap-2" aria-live="polite">

@@ -10,10 +10,3 @@ export const AnalisadorPage = () => (
     descricao="Estatísticas descritivas dos seus jogos."
   />
 )
-export const OrcamentoPage = () => (
-  <PaginaEmBreve
-    titulo="Orçamento"
-    fase={4}
-    descricao="Limite mensal de gastos com alertas de 80% e 100%."
-  />
-)

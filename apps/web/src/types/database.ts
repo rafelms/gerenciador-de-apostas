@@ -299,6 +299,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"orcamentos": {
+                  Row: {
+                    "created_at": string,"id": string,"limite_centavos": number,"mes": string,"modalidade_id": number | null,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"limite_centavos": number,"mes": string,"modalidade_id"?: number | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"limite_centavos"?: number,"mes"?: string,"modalidade_id"?: number | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "orcamentos_modalidade_id_fkey"
+      columns: ["modalidade_id"]
+isOneToOne: false
+      referencedRelation: "modalidades"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "orcamentos_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"participantes": {
                   Row: {
                     "aposta_id": string,"contribuicao_centavos": number | null,"eh_usuario": boolean,"id": string,"nome": string,"ordem": number,"peso": number,"user_id": string
@@ -479,6 +505,11 @@ isOneToOne: false
 "fn_marcar_resgatado":
 { Args: { "p_premio_id": string,"p_resgatado": boolean }; Returns: undefined
                            },
+"fn_orcamento_mes":
+{ Args: { "p_mes": string }; Returns: {
+              "gasto_centavos": number,"id": string,"limite_centavos": number,"modalidade_cor": string,"modalidade_id": number,"modalidade_nome": string,"modalidade_slug": string
+            }[]
+                           },
 "fn_preco_vigente":
 { Args: { "p_data": string,"p_modalidade_id": number }; Returns: number
                            },
@@ -490,6 +521,9 @@ isOneToOne: false
                            },
 "fn_revogar_sessoes":
 { Args: { "p_user_id": string }; Returns: undefined
+                           },
+"formatar_brl":
+{ Args: { "p_centavos": number }; Returns: string
                            },
 "importar_apostas":
 { Args: { "p_apostas": Json,"p_nome_arquivo"?: string,"p_origem": Database["public"]['Enums']["origem_aposta"],"p_qtd_erros"?: number }; Returns: Json

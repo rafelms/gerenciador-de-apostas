@@ -12,6 +12,8 @@ export const chaves = {
   // Sob 'apostas': invalidar as apostas também refaz a conferência exibida.
   conferencia: (apostaId: string) => ['apostas', 'conferencia', apostaId] as const,
   calendario: (mes: string) => ['apostas', 'calendario', mes] as const,
+  // Sob 'apostas': o gasto do mês muda quando uma aposta é salva ou excluída.
+  orcamento: (mes: string) => ['apostas', 'orcamento', mes] as const,
   configPremio: ['configuracoes', 'premio'] as const,
   notificacoes: ['notificacoes'] as const,
   resultados: ['concursos', 'resultados'] as const,
