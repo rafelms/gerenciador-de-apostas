@@ -17,13 +17,6 @@ export const AnalisadorPage = () => (
     descricao="Estatísticas descritivas dos seus jogos."
   />
 )
-export const ImportarPage = () => (
-  <PaginaEmBreve
-    titulo="Importar"
-    fase={3}
-    descricao="Importação de apostas por planilha Excel ou PDF do comprovante."
-  />
-)
 export const ExportarPage = () => (
   <PaginaEmBreve
     titulo="Exportar"

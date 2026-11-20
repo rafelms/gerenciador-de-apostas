@@ -440,3 +440,28 @@ export async function conferirAposta(
   await atualizarStatus(db, aposta)
   return { concursosConferidos: concursos.length }
 }
+
+/** Concursos conferidos por chamada; o resto fica para o cron (concursos pendentes). */
+export const MAX_CONCURSOS_POR_IMPORTACAO = 60
+
+/**
+ * Confere de uma vez as apostas de uma importação (planilha ou PDF), nos concursos que
+ * já têm resultado no banco. Uma conferência por concurso (como o cron), em vez de uma
+ * por aposta. Não consulta a API: concursos sem resultado ficam para a sincronização.
+ */
+export async function conferirImportacao(
+  db: SupabaseClient,
+  importacaoId: string,
+  userId: string,
+): Promise<{ concursosConferidos: number; restantes: number }> {
+  const ids = exigir<{ concurso_id: number }[]>(
+    await db.rpc('fn_concursos_sorteados_da_importacao', {
+      p_importacao_id: importacaoId,
+      p_user_id: userId,
+    }),
+    'ler concursos da importação',
+  ).map((r) => r.concurso_id)
+  const agora = ids.slice(0, MAX_CONCURSOS_POR_IMPORTACAO)
+  for (const id of agora) await conferirConcurso(db, id)
+  return { concursosConferidos: agora.length, restantes: ids.length - agora.length }
+}

@@ -106,3 +106,29 @@ end $$;
 
 revoke all on function public.importar_apostas(jsonb, public.origem_aposta, text, int) from public, anon;
 grant execute on function public.importar_apostas(jsonb, public.origem_aposta, text, int) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Concursos já sorteados que as apostas de uma importação precisam conferir.
+-- Só para a Edge Function conferir-apostas (service role), que confere o lote
+-- inteiro de uma vez em vez de aposta por aposta.
+-- ---------------------------------------------------------------------------
+create function public.fn_concursos_sorteados_da_importacao(p_importacao_id uuid, p_user_id uuid)
+returns table (concurso_id bigint)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select distinct c.id
+  from public.apostas a
+  join public.aposta_concursos ac on ac.aposta_id = a.id
+  join public.concursos c on c.modalidade_id = ac.modalidade_id and c.numero = ac.numero_concurso
+  where a.importacao_id = p_importacao_id
+    and a.user_id = p_user_id
+    and c.dezenas is not null
+  order by c.id
+$$;
+
+revoke all on function public.fn_concursos_sorteados_da_importacao(uuid, uuid)
+  from public, anon, authenticated;
+grant execute on function public.fn_concursos_sorteados_da_importacao(uuid, uuid) to service_role;
