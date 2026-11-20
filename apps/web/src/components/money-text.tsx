@@ -6,11 +6,18 @@ interface MoneyTextProps {
   centavos: number
   /** Colore e mostra o sinal (+/−): para saldo e ROI. O sinal garante que a cor não é a única pista. */
   comSinal?: boolean
+  /** Centavos em tom mais claro, para os números grandes (",82" em cinza). */
+  centavosSuaves?: boolean
   className?: string
 }
 
 /** Valor em BRL, algarismos tabulares e sem quebra de linha (seção 12.4). */
-export function MoneyText({ centavos, comSinal = false, className }: MoneyTextProps) {
+export function MoneyText({
+  centavos,
+  comSinal = false,
+  centavosSuaves = false,
+  className,
+}: MoneyTextProps) {
   const texto = formatarBRL(Math.abs(centavos))
   const prefixo = comSinal
     ? centavos > 0
@@ -21,6 +28,7 @@ export function MoneyText({ centavos, comSinal = false, className }: MoneyTextPr
     : centavos < 0
       ? '−'
       : ''
+  const virgula = texto.lastIndexOf(',')
   return (
     <span
       className={cn(
@@ -31,7 +39,14 @@ export function MoneyText({ centavos, comSinal = false, className }: MoneyTextPr
       )}
     >
       {prefixo}
-      {texto}
+      {centavosSuaves && virgula > 0 ? (
+        <>
+          {texto.slice(0, virgula)}
+          <span className="opacity-45">{texto.slice(virgula)}</span>
+        </>
+      ) : (
+        texto
+      )}
     </span>
   )
 }

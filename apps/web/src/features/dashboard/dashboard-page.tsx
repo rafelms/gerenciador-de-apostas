@@ -109,7 +109,7 @@ export function DashboardPage() {
       />
 
       <div
-        className="mb-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end"
+        className="mb-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end lg:mb-8"
         role="group"
         aria-label="Filtros do resumo"
       >
@@ -163,9 +163,11 @@ export function DashboardPage() {
           Indicadores do período
         </h2>
         {dados.isPending && (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Skeleton className="col-span-2 h-48 rounded-2xl lg:col-span-3" />
+            <Skeleton className="col-span-2 h-48 rounded-2xl lg:col-span-1" />
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
             ))}
           </div>
         )}
@@ -181,59 +183,80 @@ export function DashboardPage() {
           />
         )}
         {totais && (
-          <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-              <KpiCard
-                titulo="Gasto"
-                icone={Wallet}
-                valor={<MoneyText centavos={totais.gasto} />}
-                detalhe="Sua parte nas apostas"
-              />
-              <KpiCard
-                titulo="Recuperado"
-                icone={Trophy}
-                valor={<MoneyText centavos={totais.recuperado} />}
-                detalhe="Prêmios líquidos (sua parte)"
-              />
-              <KpiCard
-                titulo="Saldo"
-                icone={totais.saldo >= 0 ? ArrowUpRight : ArrowDownRight}
-                valor={<MoneyText centavos={totais.saldo} comSinal />}
-              />
-              <KpiCard
-                titulo="ROI"
-                icone={Percent}
-                valor={porcentagem(totais.roi, true)}
-                detalhe="Saldo ÷ gasto"
-              />
-              <KpiCard
-                titulo="Apostas"
-                icone={Hash}
-                valor={totais.qtdApostas.toLocaleString('pt-BR')}
-              />
-              <KpiCard
-                titulo="Premiadas"
-                icone={Trophy}
-                valor={porcentagem(totais.taxaPremiadas)}
-                detalhe="Entre as já conferidas"
-              />
-            </div>
-            {totais.qtdApostas > 0 && (
-              <Button asChild variant="link" className="mt-2 px-0">
-                <Link to={linkLista}>
-                  <ListFilter aria-hidden="true" />
-                  Ver {totais.qtdApostas === 1 ? 'a aposta' : `as ${totais.qtdApostas} apostas`} do
-                  período
-                </Link>
-              </Button>
-            )}
-          </>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* Número principal em destaque, como num extrato: o saldo do período. */}
+            <Card className="col-span-2 justify-between gap-6 p-6 lg:col-span-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-sans text-sm font-medium text-muted-foreground">Saldo</h3>
+                  <p className="text-xs text-muted-foreground first-letter:uppercase">
+                    {intervalo.rotulo}
+                  </p>
+                </div>
+                <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  {totais.saldo >= 0 ? (
+                    <ArrowUpRight className="size-5" aria-hidden="true" />
+                  ) : (
+                    <ArrowDownRight className="size-5" aria-hidden="true" />
+                  )}
+                </span>
+              </div>
+              <p className="font-display text-5xl font-light tracking-tight sm:text-6xl">
+                <MoneyText centavos={totais.saldo} comSinal centavosSuaves />
+              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">Recuperado menos gasto, sua parte.</p>
+                {totais.qtdApostas > 0 && (
+                  <Button asChild size="sm" className="min-h-11">
+                    <Link to={linkLista}>
+                      <ListFilter aria-hidden="true" />
+                      Ver {totais.qtdApostas === 1
+                        ? 'a aposta'
+                        : `as ${totais.qtdApostas} apostas`}{' '}
+                      do período
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </Card>
+            <KpiCard
+              titulo="ROI"
+              icone={Percent}
+              valor={<span className="text-4xl break-all">{porcentagem(totais.roi, true)}</span>}
+              detalhe="Saldo ÷ gasto: quanto voltou de cada real apostado."
+              destaque
+              className="col-span-2 justify-between lg:col-span-1"
+            />
+            <KpiCard
+              titulo="Gasto"
+              icone={Wallet}
+              valor={<MoneyText centavos={totais.gasto} centavosSuaves />}
+              detalhe="Sua parte nas apostas"
+            />
+            <KpiCard
+              titulo="Recuperado"
+              icone={Trophy}
+              valor={<MoneyText centavos={totais.recuperado} centavosSuaves />}
+              detalhe="Prêmios líquidos (sua parte)"
+            />
+            <KpiCard
+              titulo="Apostas"
+              icone={Hash}
+              valor={totais.qtdApostas.toLocaleString('pt-BR')}
+            />
+            <KpiCard
+              titulo="Premiadas"
+              icone={Trophy}
+              valor={porcentagem(totais.taxaPremiadas)}
+              detalhe="Entre as já conferidas"
+            />
+          </div>
         )}
       </section>
 
-      <Card className="mb-8 gap-3 p-4" role="region" aria-labelledby="titulo-orcamento">
+      <Card className="mb-8 gap-3 p-5" role="region" aria-labelledby="titulo-orcamento">
         <div className="flex items-center justify-between gap-2">
-          <h2 id="titulo-orcamento" className="text-base font-semibold first-letter:uppercase">
+          <h2 id="titulo-orcamento" className="text-lg font-medium first-letter:uppercase">
             Orçamento de {rotuloMes(hoje.slice(0, 7))}
           </h2>
           <Button asChild variant="link" className="h-auto px-0">
@@ -263,7 +286,7 @@ export function DashboardPage() {
 
       <section aria-labelledby="titulo-ultimas">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 id="titulo-ultimas" className="text-lg font-semibold">
+          <h2 id="titulo-ultimas" className="text-xl font-medium">
             Últimas apostas
           </h2>
           {!!ultimas.data?.length && (
@@ -272,7 +295,7 @@ export function DashboardPage() {
             </Button>
           )}
         </div>
-        {ultimas.isPending && <Skeleton className="h-36 w-full rounded-xl" />}
+        {ultimas.isPending && <Skeleton className="h-36 w-full rounded-2xl" />}
         {ultimas.isError && (
           <EmptyState
             icone={RefreshCw}

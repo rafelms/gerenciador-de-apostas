@@ -403,7 +403,7 @@ export function ApostasListaPage() {
       {consulta.isPending && (
         <div className="grid gap-3 lg:grid-cols-2" aria-busy="true">
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-36 w-full rounded-xl" />
+            <Skeleton key={i} className="h-36 w-full rounded-2xl" />
           ))}
         </div>
       )}

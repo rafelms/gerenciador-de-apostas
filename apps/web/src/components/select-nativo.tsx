@@ -10,7 +10,7 @@ export function SelectNativo({ className, children, ...props }: ComponentProps<'
       <select
         {...props}
         className={cn(
-          'h-11 w-full appearance-none rounded-md border border-input bg-transparent pr-9 pl-3 text-base shadow-xs outline-none',
+          'h-11 w-full appearance-none rounded-xl border border-input bg-card pr-9 pl-3.5 text-base outline-none',
           'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30',
           className,
         )}

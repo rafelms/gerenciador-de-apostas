@@ -1,15 +1,16 @@
 /*
- * Tokens de cor do LotoGestor (spec seção 12.2).
- * Bases do produto: marinho-900 #282B4A e creme-100 #EEEBDA.
+ * Tokens de cor do LotoGestor (spec seção 12.2, remodelação de 11/2026).
+ * Paleta híbrida: tela cinza neutra, cards brancos, tinta no marinho da marca
+ * (#282B4A) e acento verde-menta (#5EE38F, sempre com texto escuro em cima).
+ * O ouro continua reservado para prêmio e dezenas acertadas.
  *
- * Ajustes de contraste (AA ≥ 4.5:1, verificado por script):
- *   ouro-700    #8A6D12 → #7A600F  (4.10 → ≥ 4.5 sobre creme-100)
- *   sucesso-600 #2E7D4F → #276C44  (4.21 → ≥ 4.5 sobre creme-100)
- *   alerta-600  #A8660F → #8C550B  (3.83 → ≥ 4.5 sobre creme-100)
- * As versões "400" são para texto sobre o fundo escuro.
+ * Contraste (WCAG, verificado por script; AA ≥ 4.5:1 para texto):
+ *   tinta-950 sobre cinza-100 14.9 · cinza-600 sobre branco 6.1 / cinza-100 5.4
+ *   marinho-900 sobre menta-400 8.4 · branco sobre marinho-900 13.7
+ *   noite-100 sobre noite-800 15.0 · noite-300 sobre noite-800 7.0 · menta-400 sobre noite-800 10.3
  */
 @theme {
-  /* Marinho */
+  /* Marinho (marca) */
   --color-marinho-950: #1a1c33;
   --color-marinho-900: #282b4a; /* BASE */
   --color-marinho-800: #343860;
@@ -18,16 +19,31 @@
   --color-marinho-300: #a9accb;
   --color-marinho-100: #dcddea;
 
-  /* Creme */
-  --color-creme-50: #f8f6ee;
-  --color-creme-100: #eeebda; /* BASE */
-  --color-creme-200: #e3dec4;
-  --color-creme-300: #cfc8a6;
-  --color-creme-500: #a39b76;
+  /* Cinza neutro (tela clara) */
+  --color-cinza-50: #ffffff;
+  --color-cinza-100: #f2f2f4; /* fundo */
+  --color-cinza-200: #e9e9ee; /* áreas neutras, trilhos */
+  --color-cinza-300: #e1e1e8; /* bordas */
+  --color-cinza-400: #c9cad6;
+  --color-cinza-600: #5e6178; /* texto secundário (AA no branco e no fundo) */
+
+  /* Noite (tela escura): o marinho levado para perto do preto */
+  --color-noite-950: #0c0d18;
+  --color-noite-900: #101120; /* fundo */
+  --color-noite-800: #1a1c2e; /* cards */
+  --color-noite-700: #24263a; /* áreas neutras */
+  --color-noite-600: #2e3149; /* bordas */
+  --color-noite-300: #a3a6c2; /* texto secundário */
+  --color-noite-100: #f2f2f4;
+
+  /* Acento */
+  --color-menta-300: #9df0bc;
+  --color-menta-400: #5ee38f; /* BASE: fundos de destaque, nunca texto sobre branco */
+  --color-menta-100: #dcfae7;
 
   /* Destaque (prêmio) */
   --color-ouro-500: #c9a227; /* fundos, bordas, bolinhas acertadas */
-  --color-ouro-700: #7a600f; /* texto dourado sobre creme (AA) */
+  --color-ouro-700: #7a600f; /* texto dourado sobre fundo claro (AA) */
 
   /* Semânticas */
   --color-sucesso-600: #276c44;
@@ -40,7 +56,7 @@
   --color-info-400: #93aee8;
 
   /* Gráficos: azul, laranja e água em passos para o claro (600) e o escuro (400).
-     Validados com o validate_palette.js (CVD e luminosidade) sobre creme-50 e marinho-900. */
+     Validados com o validate_palette.js sobre #FFFFFF e noite-800. */
   --color-grafico-azul-600: #2a78d6;
   --color-grafico-laranja-600: #eb6834;
   --color-grafico-agua-600: #1baf7a;

@@ -126,7 +126,7 @@ export function CalendarioPage() {
             <ChevronLeft aria-hidden="true" />
           </Button>
           <h2
-            className="min-w-44 text-center text-lg font-semibold first-letter:uppercase"
+            className="min-w-44 text-center text-xl font-medium first-letter:uppercase"
             aria-live="polite"
           >
             {rotuloMes(mes)}
@@ -160,7 +160,7 @@ export function CalendarioPage() {
         ))}
       </ul>
 
-      {eventos.isPending && <Skeleton className="h-96 w-full rounded-xl" />}
+      {eventos.isPending && <Skeleton className="h-96 w-full rounded-2xl" />}
       {eventos.isError && (
         <EmptyState
           icone={RefreshCw}
@@ -256,7 +256,7 @@ export function CalendarioPage() {
                 </tbody>
               </table>
             </Card>
-            <Card className="h-fit gap-3 p-4" role="region" aria-labelledby="titulo-dia">
+            <Card className="h-fit gap-3 p-5" role="region" aria-labelledby="titulo-dia">
               <h2 id="titulo-dia" className="font-semibold first-letter:uppercase">
                 {rotuloDia(dia)}
               </h2>
@@ -271,7 +271,7 @@ export function CalendarioPage() {
               return (
                 <li key={semana[0]!.data}>
                   <Card
-                    className="gap-3 p-4"
+                    className="gap-3 p-5"
                     role="region"
                     aria-label={`Semana de ${rotuloSemana(semana)}`}
                   >

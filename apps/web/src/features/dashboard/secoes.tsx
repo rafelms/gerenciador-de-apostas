@@ -35,9 +35,9 @@ export function CartaoGrafico({
   tabelaAberta?: boolean
 }) {
   return (
-    <Card className="min-w-0 gap-3 p-4" role="region" aria-labelledby={id}>
+    <Card className="min-w-0 gap-4 p-5 lg:p-6" role="region" aria-labelledby={id}>
       <div className="grid gap-1">
-        <h2 id={id} className="text-base font-semibold">
+        <h2 id={id} className="text-lg font-medium">
           {titulo}
         </h2>
         {descricao && <p className="text-sm text-muted-foreground">{descricao}</p>}
@@ -172,8 +172,8 @@ function Bloco({
   children: ReactNode[]
 }) {
   return (
-    <Card className="min-w-0 gap-2 p-4" role="region" aria-labelledby={id}>
-      <h2 id={id} className="flex items-center gap-2 text-base font-semibold">
+    <Card className="min-w-0 gap-2 p-5" role="region" aria-labelledby={id}>
+      <h2 id={id} className="flex items-center gap-2 text-lg font-medium">
         <Icone className="size-4 text-muted-foreground" aria-hidden="true" />
         {titulo}
       </h2>
