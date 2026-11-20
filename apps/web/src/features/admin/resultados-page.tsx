@@ -355,7 +355,7 @@ export function AdminResultadosPage() {
         titulo="Resultados"
         descricao="Sincronização com a API da CAIXA e lançamento manual."
       />
-      {modalidades.isPending && <Skeleton className="h-64 w-full rounded-xl" />}
+      {modalidades.isPending && <Skeleton className="h-64 w-full rounded-2xl" />}
       {modalidades.isError && (
         <EmptyState
           icone={RefreshCw}

@@ -99,7 +99,7 @@ export function OrcamentoPage() {
           <ChevronLeft aria-hidden="true" />
         </Button>
         <h2
-          className="min-w-44 text-center text-lg font-semibold first-letter:uppercase"
+          className="min-w-44 text-center text-xl font-medium first-letter:uppercase"
           aria-live="polite"
         >
           {rotuloMes(mes)}
@@ -115,7 +115,7 @@ export function OrcamentoPage() {
         </Button>
       </div>
 
-      {atual.isPending && <Skeleton className="h-40 w-full rounded-xl" />}
+      {atual.isPending && <Skeleton className="h-40 w-full rounded-2xl" />}
       {atual.isError && (
         <EmptyState
           icone={RefreshCw}
@@ -202,7 +202,7 @@ function LinhaOrcamento({
   }
 
   return (
-    <Card className="gap-3 p-4" role="region" aria-label={`Orçamento ${nome}`}>
+    <Card className="gap-3 p-5" role="region" aria-label={`Orçamento ${nome}`}>
       <BarraOrcamento orcamento={orcamento} />
       {editando ? (
         <form onSubmit={enviar} className="flex flex-wrap items-end gap-2">
@@ -287,7 +287,7 @@ function NovoLimite({
   }
 
   return (
-    <Card className="gap-4 p-4" role="region" aria-labelledby="titulo-novo-limite">
+    <Card className="gap-4 p-5" role="region" aria-labelledby="titulo-novo-limite">
       <h2 id="titulo-novo-limite" className="font-semibold">
         Novo limite
       </h2>

@@ -23,7 +23,7 @@ export function EmptyState({ icone: Icone, titulo, descricao, acao, className }:
       <span className="flex size-12 items-center justify-center rounded-full bg-muted">
         <Icone className="size-6 text-muted-foreground" aria-hidden="true" />
       </span>
-      <h2 className="text-lg font-semibold">{titulo}</h2>
+      <h2 className="text-xl font-medium">{titulo}</h2>
       {descricao && <p className="max-w-sm text-sm text-muted-foreground">{descricao}</p>}
       {acao && <div className="mt-2">{acao}</div>}
     </div>

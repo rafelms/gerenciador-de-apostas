@@ -90,7 +90,7 @@ export function ApostaCard({
   )
 
   const classe = cn(
-    'grid gap-2 rounded-xl border border-l-4 bg-card p-4 transition-colors duration-150',
+    'grid gap-2 rounded-2xl border border-l-4 border-transparent bg-card p-4 shadow-card transition-colors duration-150 dark:border-border',
     selecionada && 'ring-2 ring-ring',
   )
 

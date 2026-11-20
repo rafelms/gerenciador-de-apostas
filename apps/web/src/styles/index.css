@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import '@fontsource-variable/inter';
+@import '@fontsource-variable/outfit';
 @import './tokens.css';
 
 @custom-variant dark (&:is(.dark *));
@@ -10,24 +11,31 @@
  * nomes (bg-background, text-muted-foreground, bg-primary…), nunca hex cru.
  */
 :root {
-  --background: var(--color-creme-100);
-  --foreground: var(--color-marinho-900);
-  --card: var(--color-creme-50);
-  --card-foreground: var(--color-marinho-900);
-  --popover: var(--color-creme-50);
-  --popover-foreground: var(--color-marinho-900);
+  --background: var(--color-cinza-100);
+  --foreground: var(--color-marinho-950);
+  --card: var(--color-cinza-50);
+  --card-foreground: var(--color-marinho-950);
+  --popover: var(--color-cinza-50);
+  --popover-foreground: var(--color-marinho-950);
   --primary: var(--color-marinho-900);
-  --primary-foreground: var(--color-creme-100);
-  --secondary: var(--color-creme-200);
-  --secondary-foreground: var(--color-marinho-900);
-  --muted: var(--color-creme-200);
-  --muted-foreground: var(--color-marinho-700);
-  --accent: var(--color-creme-200);
-  --accent-foreground: var(--color-marinho-900);
+  --primary-foreground: var(--color-cinza-50);
+  --secondary: var(--color-cinza-200);
+  --secondary-foreground: var(--color-marinho-950);
+  --muted: var(--color-cinza-200);
+  --muted-foreground: var(--color-cinza-600);
+  --accent: var(--color-cinza-200);
+  --accent-foreground: var(--color-marinho-950);
   --destructive: var(--color-perigo-600);
-  --border: var(--color-creme-300);
-  --input: var(--color-creme-300);
+  --border: var(--color-cinza-300);
+  --input: var(--color-cinza-300);
   --ring: var(--color-marinho-700);
+  /* Card de destaque escuro (o "card preto" do layout) e o acento menta. */
+  --tinta: var(--color-marinho-900);
+  --tinta-foreground: var(--color-cinza-50);
+  --tinta-muted: var(--color-marinho-300);
+  --menta: var(--color-menta-400);
+  --menta-foreground: var(--color-marinho-950);
+  --menta-suave: var(--color-menta-100);
   --destaque: var(--color-ouro-500);
   --destaque-texto: var(--color-ouro-700);
   --lucro: var(--color-sucesso-600);
@@ -37,28 +45,35 @@
   --serie-1: var(--color-grafico-azul-600);
   --serie-2: var(--color-grafico-laranja-600);
   --serie-3: var(--color-grafico-agua-600);
-  --radius: 0.75rem;
+  --radius: 1rem;
+  --sombra-card: 0 1px 2px rgb(26 28 51 / 0.04), 0 4px 16px rgb(26 28 51 / 0.04);
 }
 
 .dark {
-  --background: var(--color-marinho-950);
-  --foreground: var(--color-creme-100);
-  --card: var(--color-marinho-900);
-  --card-foreground: var(--color-creme-100);
-  --popover: var(--color-marinho-900);
-  --popover-foreground: var(--color-creme-100);
-  --primary: var(--color-creme-100);
-  --primary-foreground: var(--color-marinho-900);
-  --secondary: var(--color-marinho-800);
-  --secondary-foreground: var(--color-creme-100);
-  --muted: var(--color-marinho-800);
-  --muted-foreground: var(--color-marinho-300);
-  --accent: var(--color-marinho-800);
-  --accent-foreground: var(--color-creme-100);
+  --background: var(--color-noite-900);
+  --foreground: var(--color-noite-100);
+  --card: var(--color-noite-800);
+  --card-foreground: var(--color-noite-100);
+  --popover: var(--color-noite-800);
+  --popover-foreground: var(--color-noite-100);
+  --primary: var(--color-menta-400);
+  --primary-foreground: var(--color-marinho-950);
+  --secondary: var(--color-noite-700);
+  --secondary-foreground: var(--color-noite-100);
+  --muted: var(--color-noite-700);
+  --muted-foreground: var(--color-noite-300);
+  --accent: var(--color-noite-700);
+  --accent-foreground: var(--color-noite-100);
   --destructive: var(--color-perigo-400);
-  --border: var(--color-marinho-700);
-  --input: var(--color-marinho-700);
-  --ring: var(--color-marinho-300);
+  --border: var(--color-noite-600);
+  --input: var(--color-noite-600);
+  --ring: var(--color-menta-300);
+  --tinta: var(--color-noite-950);
+  --tinta-foreground: var(--color-noite-100);
+  --tinta-muted: var(--color-noite-300);
+  --menta: var(--color-menta-400);
+  --menta-foreground: var(--color-marinho-950);
+  --menta-suave: color-mix(in oklab, var(--color-menta-400) 16%, var(--color-noite-800));
   --destaque: var(--color-ouro-500);
   --destaque-texto: var(--color-ouro-500);
   --lucro: var(--color-sucesso-400);
@@ -68,10 +83,13 @@
   --serie-1: var(--color-grafico-azul-400);
   --serie-2: var(--color-grafico-laranja-400);
   --serie-3: var(--color-grafico-agua-400);
+  --sombra-card: 0 1px 2px rgb(0 0 0 / 0.3);
 }
 
 @theme inline {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  /* Títulos e números grandes (seção 12.3). */
+  --font-display: 'Outfit Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -90,6 +108,12 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-tinta: var(--tinta);
+  --color-tinta-foreground: var(--tinta-foreground);
+  --color-tinta-muted: var(--tinta-muted);
+  --color-menta: var(--menta);
+  --color-menta-foreground: var(--menta-foreground);
+  --color-menta-suave: var(--menta-suave);
   --color-destaque: var(--destaque);
   --color-destaque-texto: var(--destaque-texto);
   --color-lucro: var(--lucro);
@@ -103,6 +127,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --shadow-card: var(--sombra-card);
 }
 
 @layer base {
@@ -116,6 +142,12 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 16px;
     line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
   /* Valores sempre com algarismos tabulares (seção 12.1). */
   .tabular-nums,

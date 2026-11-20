@@ -126,7 +126,7 @@ export function NotificacoesPage() {
       {consulta.isPending && (
         <div className="grid gap-2" aria-busy="true">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
           ))}
         </div>
       )}

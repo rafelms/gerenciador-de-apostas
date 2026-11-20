@@ -15,9 +15,9 @@ import { cn } from '@/lib/utils'
 import { navMais, navPrincipal } from './navegacao'
 
 const classeItem =
-  'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors duration-150'
+  'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors duration-150'
 
-/** Bottom nav do mobile (< lg): Início, Apostas, [+] Nova, Calendário, Mais. */
+/** Barra inferior do mobile (< lg), pílula escura flutuante: Início, Apostas, [+] Nova, Calendário, Mais. */
 export function BarraInferior() {
   const { ehAdmin } = useAuth()
   const [maisAberto, setMaisAberto] = useState(false)
@@ -28,9 +28,9 @@ export function BarraInferior() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 lg:hidden"
     >
-      <ul className="mx-auto flex max-w-md items-stretch">
+      <ul className="mx-auto flex max-w-md items-stretch gap-1 rounded-full bg-tinta p-1.5 text-tinta-foreground shadow-lg">
         {navPrincipal.map((item) => {
           const Icone = item.icone
           const ehNova = item.rota === '/apostas/nova'
@@ -40,20 +40,25 @@ export function BarraInferior() {
                 to={item.rota}
                 end
                 className={({ isActive }) =>
-                  cn(classeItem, isActive && !ehNova ? 'text-foreground' : 'text-muted-foreground')
+                  cn(
+                    classeItem,
+                    isActive && !ehNova
+                      ? 'bg-white/10 text-tinta-foreground'
+                      : 'text-tinta-muted hover:text-tinta-foreground',
+                  )
                 }
               >
                 {ehNova ? (
                   <>
-                    {/* Botão central destacado */}
-                    <span className="-mt-5 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-background">
-                      <Icone className="size-7" aria-hidden="true" />
+                    {/* Botão central destacado em menta */}
+                    <span className="flex size-12 items-center justify-center rounded-full bg-menta text-menta-foreground">
+                      <Icone className="size-6" aria-hidden="true" />
                     </span>
-                    <span>Nova aposta</span>
+                    <span className="sr-only">Nova aposta</span>
                   </>
                 ) : (
                   <>
-                    <Icone className="size-6" aria-hidden="true" />
+                    <Icone className="size-5" aria-hidden="true" />
                     <span>{item.rotulo}</span>
                   </>
                 )}
@@ -64,14 +69,19 @@ export function BarraInferior() {
         <li className="flex flex-1">
           <Sheet open={maisAberto} onOpenChange={setMaisAberto}>
             <SheetTrigger
-              className={cn(classeItem, maisAtivo ? 'text-foreground' : 'text-muted-foreground')}
+              className={cn(
+                classeItem,
+                maisAtivo
+                  ? 'bg-white/10 text-tinta-foreground'
+                  : 'text-tinta-muted hover:text-tinta-foreground',
+              )}
             >
-              <Menu className="size-6" aria-hidden="true" />
+              <Menu className="size-5" aria-hidden="true" />
               <span>Mais</span>
             </SheetTrigger>
             <SheetContent
               side="bottom"
-              className="rounded-t-2xl pb-[calc(1rem+env(safe-area-inset-bottom))]"
+              className="rounded-t-3xl pb-[calc(1rem+env(safe-area-inset-bottom))]"
             >
               <SheetHeader>
                 <SheetTitle>Mais opções</SheetTitle>
@@ -87,7 +97,7 @@ export function BarraInferior() {
                         onClick={() => setMaisAberto(false)}
                         className={({ isActive }) =>
                           cn(
-                            'flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-lg p-2 text-center text-xs font-medium transition-colors duration-150',
+                            'flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center text-xs font-medium transition-colors duration-150',
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted hover:bg-accent',

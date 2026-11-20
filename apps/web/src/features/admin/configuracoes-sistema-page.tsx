@@ -286,7 +286,7 @@ export function AdminConfiguracoesPage() {
         descricao="Regras globais de cálculo, válidas para todos os usuários."
       />
       {(config.isPending || modalidades.isPending) && (
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
       )}
       {(config.isError || modalidades.isError) && (
         <EmptyState

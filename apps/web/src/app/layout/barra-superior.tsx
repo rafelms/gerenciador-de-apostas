@@ -28,14 +28,18 @@ export function BarraSuperior() {
   useNotificacoesAoVivo()
 
   return (
-    <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 lg:h-16 lg:px-8">
+    <header className="sticky top-0 z-20 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 lg:h-20 lg:px-8">
         <Link to="/" className="lg:hidden" aria-label="LotoGestor — início">
           <Logo className="text-base" />
         </Link>
-        {/* Seletor de período do dashboard entra aqui na Fase 4 (seção 12.5). */}
         <div className="flex-1" />
-        <Button variant="ghost" size="icon" asChild className="relative">
+        <Button
+          variant="outline"
+          size="icon"
+          asChild
+          className="relative border-transparent shadow-card dark:border-border"
+        >
           <Link
             to="/notificacoes"
             aria-label={
@@ -47,7 +51,7 @@ export function BarraSuperior() {
             <Bell aria-hidden="true" />
             {naoLidas > 0 && (
               <span
-                className="absolute top-1 right-1 flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs leading-5 font-semibold text-white tabular-nums"
+                className="absolute -top-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs leading-5 font-semibold text-white tabular-nums"
                 aria-hidden="true"
               >
                 {naoLidas > 9 ? '9+' : naoLidas}
@@ -58,7 +62,7 @@ export function BarraSuperior() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Menu da conta">
-              <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              <span className="flex size-11 items-center justify-center rounded-full bg-tinta font-display text-sm font-semibold text-tinta-foreground">
                 {perfil ? iniciais(perfil.nome) : '?'}
               </span>
             </Button>

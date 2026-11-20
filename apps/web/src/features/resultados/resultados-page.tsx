@@ -112,13 +112,13 @@ export function ResultadosPage() {
       )}
 
       <section aria-labelledby="titulo-ultimos" className="mb-8">
-        <h2 id="titulo-ultimos" className="mb-3 text-lg font-semibold">
+        <h2 id="titulo-ultimos" className="mb-3 text-xl font-medium">
           Últimos sorteios
         </h2>
         {modalidades.isPending || ultimos.isPending ? (
           <div className="grid gap-3 md:grid-cols-2" aria-busy="true">
             {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-40 rounded-xl" />
+              <Skeleton key={i} className="h-40 rounded-2xl" />
             ))}
           </div>
         ) : (
@@ -135,10 +135,10 @@ export function ResultadosPage() {
       </section>
 
       <section aria-labelledby="titulo-meus">
-        <h2 id="titulo-meus" className="mb-3 text-lg font-semibold">
+        <h2 id="titulo-meus" className="mb-3 text-xl font-medium">
           Concursos com apostas suas
         </h2>
-        {meus.isPending && <Skeleton className="h-40 w-full rounded-xl" />}
+        {meus.isPending && <Skeleton className="h-40 w-full rounded-2xl" />}
         {meus.data?.length === 0 && (
           <EmptyState
             icone={Ticket}
