@@ -452,6 +452,9 @@ isOneToOne: false
 "eh_ativo":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"faixa_maxima":
+{ Args: { "p_faixas": Json }; Returns: number
+                           },
 "fn_admin_listar_usuarios":
 { Args: Record<PropertyKey, never>; Returns: {
               "ativo": boolean,"created_at": string,"email": string,"id": string,"nome": string,"papel": Database["public"]['Enums']["papel_usuario"],"ultimo_acesso": string
@@ -461,6 +464,9 @@ isOneToOne: false
 { Args: { "p_importacao_id": string,"p_user_id": string }; Returns: {
               "concurso_id": number
             }[]
+                           },
+"fn_dashboard":
+{ Args: { "p_fim"?: string,"p_inicio"?: string,"p_modalidade"?: number }; Returns: Json
                            },
 "fn_limpar_conferencia":
 { Args: { "p_aposta_id": string }; Returns: undefined
