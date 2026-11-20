@@ -614,3 +614,69 @@ Deno.test('API alternativa não rebaixa um resultado oficial completo', opcoes, 
     await limpar(userId, megaId)
   }
 })
+
+Deno.test(
+  'rateio publicado depois das dezenas: a notificação é reescrita e a divisão se mantém',
+  opcoes,
+  async () => {
+    const { userId, apostaId, megaId } = await criarCenario()
+    try {
+      const base = {
+        numero: ANTERIOR,
+        dataSorteio: '2026-10-14',
+        dezenas: [3, 17, 22, 31, 40, 58],
+        acumulado: false,
+        dataProximo: null,
+        valorEstimadoProximoCentavos: null,
+      }
+      // 1. Dezenas sem rateio: premiada, mas com "valor a confirmar".
+      const g1 = await gravarConcurso(db, megaId, { ...base, rateio: [] }, 'api_caixa')
+      await conferirConcurso(db, g1.id)
+      const chave = `resultado:${g1.id}`
+      const { data: n1 } = await db
+        .from('notificacoes')
+        .select('id, titulo, corpo')
+        .eq('user_id', userId)
+        .eq('chave_dedup', chave)
+        .single()
+      assert(`${n1!.titulo} ${n1!.corpo}`.includes('a confirmar'))
+      await db.from('notificacoes').update({ lida_em: new Date().toISOString() }).eq('id', n1!.id)
+
+      // 2. O rateio sai (mesma fonte oficial): o texto muda e volta como não lida.
+      const rateio = [
+        { acertos: 6, ganhadores: 1, valorCentavos: 100_000_000 },
+        { acertos: 5, ganhadores: 52, valorCentavos: 4_123_456 },
+        { acertos: 4, ganhadores: 3876, valorCentavos: 101_234 },
+      ]
+      const g2 = await gravarConcurso(db, megaId, { ...base, rateio }, 'api_caixa')
+      assert(g2.mudou && !g2.corrigido)
+      await conferirConcurso(db, g2.id)
+      const { data: n2 } = await db
+        .from('notificacoes')
+        .select('id, titulo, corpo, lida_em')
+        .eq('user_id', userId)
+        .eq('chave_dedup', chave)
+        .single()
+      assertEquals(n2!.id, n1!.id)
+      assert(!`${n2!.titulo} ${n2!.corpo}`.includes('a confirmar'))
+      assertEquals(n2!.lida_em, null)
+
+      // 3. Conferir de novo sem mudança: não mexe na notificação lida nem na divisão.
+      await db.from('notificacoes').update({ lida_em: new Date().toISOString() }).eq('id', n1!.id)
+      await conferirConcurso(db, g2.id)
+      const { data: n3 } = await db.from('notificacoes').select('lida_em').eq('id', n1!.id).single()
+      assert(n3!.lida_em !== null)
+      const { data: premio } = await db
+        .from('premios')
+        .select('id, liquido_usuario_centavos, premio_divisoes (liquido_centavos)')
+        .eq('aposta_id', apostaId)
+        .single()
+      const divisoes = premio!.premio_divisoes as { liquido_centavos: number }[]
+      assertEquals(divisoes.length, 2)
+      // A divisão é do líquido da aposta inteira entre os 2 participantes (pesos 1/1).
+      assert(divisoes.every((d) => d.liquido_centavos > 0))
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
