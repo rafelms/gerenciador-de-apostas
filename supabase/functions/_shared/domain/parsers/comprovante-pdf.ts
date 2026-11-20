@@ -36,6 +36,9 @@ export interface Comprovante {
   erros: string[]
 }
 
+/** Campos lidos do comprovante, sem o resultado das validações. */
+export type DadosComprovante = Omit<Comprovante, 'avisos' | 'erros'>
+
 export interface OpcoesComprovante {
   /** Preço da aposta simples vigente na data (para conferir o valor da cota). */
   precoSimples?: (slug: string, dataIso: string) => number | null
@@ -98,8 +101,6 @@ export async function parseComprovante(
   opcoes: OpcoesComprovante = {},
 ): Promise<Comprovante> {
   const texto = normalizarTextoComprovante(textoBruto)
-  const avisos: string[] = []
-  const erros: string[] = []
 
   // Título: "Comprovante de Aposta Bolão Mega-Sena". Em texto de uma linha só, o nome
   // da modalidade termina onde começa o próximo rótulo.
@@ -150,12 +151,58 @@ export async function parseComprovante(
   const codigo = capturar(texto, /(?:^|\s)([0-9A-F]{32,40})(?=\s|$)/m)
   const codigoReciboHash = codigo ? await sha256(codigo) : null
 
-  // --- Validações (Apêndice A.3) ---------------------------------------------
+  const erros: string[] = []
   if (!titulo) erros.push('Não parece um comprovante de aposta das Loterias CAIXA.')
   else if (tipo !== 'bolao')
     erros.push(
       'Por enquanto só o comprovante de bolão é lido. Registre esta aposta pelo formulário.',
     )
+  const dados: DadosComprovante = {
+    tipo,
+    modalidadeSlug,
+    concurso,
+    dataSorteio,
+    dataCompra,
+    horaCompra,
+    dataApostaRecibo,
+    canal,
+    valorTotalCentavos,
+    valorCotaCentavos,
+    tarifaCentavos,
+    bolaoNumeroCota,
+    bolaoTotalCotas,
+    bolaoCotasUsuario,
+    jogos,
+    codigoReciboHash,
+  }
+  const v = validarComprovante(dados, opcoes, modalidadeNome)
+  return { ...dados, avisos: v.avisos, erros: [...erros, ...v.erros] }
+}
+
+/**
+ * Validações do Apêndice A.3 sobre os campos (também na revisão, depois que o usuário
+ * corrige algum valor). `modalidadeNome` só melhora a mensagem de modalidade desconhecida.
+ */
+export function validarComprovante(
+  d: DadosComprovante,
+  opcoes: OpcoesComprovante = {},
+  modalidadeNome = d.modalidadeSlug,
+): { avisos: string[]; erros: string[] } {
+  const avisos: string[] = []
+  const erros: string[] = []
+  const {
+    modalidadeSlug,
+    concurso,
+    jogos,
+    valorTotalCentavos,
+    valorCotaCentavos,
+    tarifaCentavos,
+    dataCompra,
+    dataSorteio,
+    bolaoTotalCotas,
+    bolaoCotasUsuario,
+    bolaoNumeroCota,
+  } = d
   const suportada = ehSlugSuportado(modalidadeSlug)
   if (!suportada)
     erros.push(
@@ -215,26 +262,7 @@ export async function parseComprovante(
   if (dataSorteio && dataCompra && dataSorteio < dataCompra)
     avisos.push('A data do sorteio é anterior à data da compra.')
 
-  return {
-    tipo,
-    modalidadeSlug,
-    concurso,
-    dataSorteio,
-    dataCompra,
-    horaCompra,
-    dataApostaRecibo,
-    canal,
-    valorTotalCentavos,
-    valorCotaCentavos,
-    tarifaCentavos,
-    bolaoNumeroCota,
-    bolaoTotalCotas,
-    bolaoCotasUsuario,
-    jogos,
-    codigoReciboHash,
-    avisos,
-    erros,
-  }
+  return { avisos, erros }
 }
 
 /**
@@ -242,7 +270,7 @@ export async function parseComprovante(
  * compra; valor pago = total do recibo; a data de registro do bolão vai na observação.
  * O schema valida tudo de novo antes de salvar.
  */
-export function comprovanteParaAposta(c: Comprovante): ApostaInput {
+export function comprovanteParaAposta(c: DadosComprovante): ApostaInput {
   const observacao = c.dataApostaRecibo
     ? `Bolão registrado pela lotérica em ${isoParaBr(c.dataApostaRecibo)}.`
     : null

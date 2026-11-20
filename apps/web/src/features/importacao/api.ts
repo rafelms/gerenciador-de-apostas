@@ -118,3 +118,19 @@ export async function conferirImportacao(importacaoId: string) {
   if (error) throw new Error(await mensagemDaFunction(error, 'Não foi possível conferir agora.'))
   return data!
 }
+
+/**
+ * Comprovantes já importados pelo usuário (seção 11.4): hash → data da importação.
+ * Só o hash do código do recibo existe no banco; o código nunca sai do aparelho.
+ */
+export async function comprovantesJaImportados(hashes: string[]): Promise<Map<string, string>> {
+  const mapa = new Map<string, string>()
+  if (hashes.length === 0) return mapa
+  const { data, error } = await supabase
+    .from('apostas')
+    .select('comprovante_hash, created_at')
+    .in('comprovante_hash', hashes)
+  if (error) throw new Error('Não foi possível verificar os comprovantes já importados.')
+  for (const a of data) if (a.comprovante_hash) mapa.set(a.comprovante_hash, a.created_at)
+  return mapa
+}

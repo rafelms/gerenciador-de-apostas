@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { expect, test } from '@playwright/test'
@@ -224,5 +225,129 @@ test.describe('Aceite F3 (exportação)', () => {
     await page.getByRole('button', { name: 'Importar 3 apostas' }).click()
     await expect(page).toHaveURL('/apostas?origem=excel')
     expect(await totais(b.email)).toEqual(esperado)
+  })
+})
+
+/**
+ * PDF mínimo com uma linha de texto por linha (Helvetica, WinAnsi), como o comprovante
+ * do app Loterias CAIXA entrega ao pdf.js. Basta para testar a extração de verdade.
+ */
+function pdfDeTexto(texto: string, nome = 'comprovante.pdf') {
+  const escapar = (l: string) => l.replace(/[\\()]/g, (c) => `\\${c}`)
+  const linhas = texto.split('\n').filter((l) => l.trim())
+  const conteudo = `BT /F1 9 Tf 12 TL 40 810 Td ${linhas.map((l) => `(${escapar(l)}) Tj T*`).join(' ')} ET`
+  const objetos = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    `<< /Length ${Buffer.byteLength(conteudo, 'latin1')} >>\nstream\n${conteudo}\nendstream`,
+  ]
+  let pdf = '%PDF-1.4\n'
+  const posicoes: number[] = []
+  objetos.forEach((o, i) => {
+    posicoes.push(Buffer.byteLength(pdf, 'latin1'))
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`
+  })
+  const xref = Buffer.byteLength(pdf, 'latin1')
+  pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n`
+  pdf += posicoes.map((p) => `${String(p).padStart(10, '0')} 00000 n \n`).join('')
+  pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return { name: nome, mimeType: 'application/pdf', buffer: Buffer.from(pdf, 'latin1') }
+}
+
+const FIXTURE_PDF = readFileSync(
+  new URL('../../../packages/shared/test/fixtures/bolao-megasena-01.txt', import.meta.url),
+  'utf8',
+)
+
+test.describe('Aceite F3 (comprovante em PDF)', () => {
+  test('importa o bolão do PDF sem nome nem CPF e bloqueia o mesmo PDF na 2ª vez', async ({
+    page,
+  }) => {
+    const { id, email } = await criarUsuario('membro')
+    await entrarPelaTela(page, email)
+    await expect(page).toHaveURL('/')
+    await page.goto('/importar')
+    await page.getByRole('tab', { name: 'Comprovante (PDF)' }).click()
+    await expect(page).toHaveURL('/importar?aba=pdf')
+
+    await page
+      .getByLabel(/Escolha os comprovantes/)
+      .setInputFiles([
+        pdfDeTexto(FIXTURE_PDF, 'bolao-mega.pdf'),
+        pdfDeTexto('Fatura do cartão\nTotal: R$ 10,00', 'fatura.pdf'),
+      ])
+
+    const bolao = page.getByRole('region', { name: 'Comprovante bolao-mega.pdf' })
+    await expect(bolao.getByText('Concurso 3070')).toBeVisible()
+    await expect(
+      bolao.getByRole('list', { name: 'Jogos do comprovante' }).getByRole('listitem'),
+    ).toHaveCount(8)
+    await expect(bolao.getByLabel('Valor total')).toHaveValue('11,93')
+    await expect(bolao.getByLabel('Nº da cota')).toHaveValue('35')
+    await expect(page.getByRole('region', { name: 'Comprovante fatura.pdf' })).toContainText(
+      'Não parece um comprovante de aposta das Loterias CAIXA.',
+    )
+    await semRolagemHorizontal(page)
+
+    // A revisão revalida a cada correção.
+    await bolao.getByLabel('Valor total').fill('12,00')
+    await expect(bolao.getByRole('list', { name: 'Erros' })).toContainText(
+      'O valor total (R$ 12,00) não é a soma da cota com a tarifa (R$ 11,93).',
+    )
+    await expect(page.getByRole('button', { name: 'Nada para importar' })).toBeDisabled()
+    await bolao.getByLabel('Valor total').fill('11,93')
+    await expect(bolao.getByLabel('Importar este comprovante')).toBeChecked()
+
+    // O payload enviado ao banco não tem nome, CPF nem o código puro do recibo.
+    const envio = page.waitForRequest((r) => r.url().includes('/rpc/importar_apostas'))
+    await page.getByRole('button', { name: 'Importar 1 comprovante' }).click()
+    const corpo = (await envio).postData() ?? ''
+    for (const proibido of [
+      'FULANO',
+      'SILVA',
+      '000.000.000-00',
+      '0000AAAA1111BBBB2222CCCC3333DDDD4444',
+    ]) {
+      expect(corpo).not.toContain(proibido)
+    }
+    const hash = createHash('sha256').update('0000AAAA1111BBBB2222CCCC3333DDDD4444').digest('hex')
+    expect(corpo).toContain(hash)
+    await expect(page).toHaveURL('/apostas?origem=pdf')
+    await expect(page.getByText('1 comprovante importado.')).toBeVisible()
+
+    const { data: aposta } = await admin
+      .from('apostas')
+      .select(
+        'origem, tipo, concurso_inicial, data_aposta, valor_pago_centavos, valor_cota_centavos, tarifa_centavos, bolao_total_cotas, bolao_cotas_usuario, bolao_numero_cota, comprovante_hash, observacao, aposta_jogos (id)',
+      )
+      .eq('user_id', id)
+      .single()
+    expect(aposta).toMatchObject({
+      origem: 'pdf',
+      tipo: 'bolao',
+      concurso_inicial: 3070,
+      data_aposta: '2026-10-14',
+      valor_pago_centavos: 1193,
+      valor_cota_centavos: 884,
+      tarifa_centavos: 309,
+      bolao_total_cotas: 38,
+      bolao_cotas_usuario: 1,
+      bolao_numero_cota: 35,
+      comprovante_hash: hash,
+      observacao: 'Bolão registrado pela lotérica em 11/10/2026.',
+    })
+    expect(aposta!.aposta_jogos).toHaveLength(8)
+
+    // O mesmo PDF de novo: bloqueado como duplicata.
+    await page.goto('/importar?aba=pdf')
+    await page
+      .getByLabel(/Escolha os comprovantes/)
+      .setInputFiles(pdfDeTexto(FIXTURE_PDF, 'bolao-mega.pdf'))
+    await expect(page.getByRole('region', { name: 'Comprovante bolao-mega.pdf' })).toContainText(
+      /Este comprovante já foi importado em \d{2}\/\d{2}\/\d{4}\./,
+    )
+    await expect(page.getByRole('button', { name: 'Nada para importar' })).toBeDisabled()
   })
 })
