@@ -78,6 +78,14 @@ describe('lerParticipantes', () => {
     ])
   })
 
+  it('lê a contribuição opcional em reais', () => {
+    expect(lerParticipantes('Eu:1:6,00; Ana:2:12')).toEqual([
+      { nome: 'Eu', peso: 1, ehUsuario: true, contribuicaoCentavos: 600 },
+      { nome: 'Ana', peso: 2, ehUsuario: false, contribuicaoCentavos: 1200 },
+    ])
+    expect(lerParticipantes('Eu:1:abc')).toBe('contribuição inválida para Eu ("abc")')
+  })
+
   it('vazio é sem divisão; nome ou peso ruim é erro', () => {
     expect(lerParticipantes(null)).toEqual([])
     expect(lerParticipantes(':1')).toMatch(/sem nome/)
@@ -319,7 +327,7 @@ describe('exportação', () => {
       jogos: [Array.from({ length: 50 }, (_, i) => i * 2)],
       bolao: null,
       valorPagoCentavos: 900,
-      participantes: [{ nome: 'Eu', peso: 1, ehUsuario: true }],
+      participantes: [{ nome: 'Eu', peso: 1, ehUsuario: true, contribuicaoCentavos: 900 }],
       localCompra: null,
       observacao: null,
     },
@@ -342,7 +350,7 @@ describe('exportação', () => {
     })
     expect(linhas[1]).toMatchObject({ grupo: 'A1', valor_pago: null, participantes: null })
     expect(linhas[2]!.dezenas).toMatch(/^00 02 04/)
-    expect(linhas[2]!.participantes).toBe('Eu:1')
+    expect(linhas[2]!.participantes).toBe('Eu:1:9,00')
   })
 
   it('o arquivo exportado é reimportável com os mesmos dados', () => {

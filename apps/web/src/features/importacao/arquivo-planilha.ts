@@ -142,7 +142,7 @@ const INSTRUCOES = [
   ['valor_pago', 'Obrigatório na 1ª linha do grupo; nas outras pode ficar vazio.'],
   [
     'participantes',
-    'Opcional. nome:peso separados por ";". Você é "Eu" ou o nome com * (ex.: Rafael*:1).',
+    'Opcional. nome:peso separados por ";", com a contribuição em reais se quiser (Eu:1:5,00). Você é "Eu" ou o nome com * (ex.: Rafael*:1).',
   ],
   ['observacao, numero_cota, local_compra', 'Opcionais.'],
   [''],

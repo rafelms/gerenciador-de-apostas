@@ -111,7 +111,8 @@ const TIPOS = new Map<string, ApostaInput['tipo']>([
 
 /**
  * "Eu:1; João:1; Ana:2" → participantes. Você é quem se chama "Eu" ou quem termina
- * com "*" ("Rafael*:1"). Peso vazio = 1; aceita "1,5".
+ * com "*" ("Rafael*:1"). Peso vazio = 1; aceita "1,5". Um 3º campo opcional é a
+ * contribuição em reais ("Eu:1:6,00"), que a exportação grava quando existe.
  */
 export function lerParticipantes(valor: unknown): ParticipanteInput[] | string {
   const t = texto(valor)
@@ -121,13 +122,25 @@ export function lerParticipantes(valor: unknown): ParticipanteInput[] | string {
     .split(';')
     .map((p) => p.trim())
     .filter(Boolean)) {
-    const [nomeBruto = '', pesoBruto = ''] = parte.split(':').map((p) => p.trim())
+    const [nomeBruto = '', pesoBruto = '', contribuicaoBruta = ''] = parte
+      .split(':')
+      .map((p) => p.trim())
     const marcado = nomeBruto.endsWith('*')
     const nome = marcado ? nomeBruto.slice(0, -1).trim() : nomeBruto
     const peso = pesoBruto ? Number(pesoBruto.replace(',', '.')) : 1
     if (!nome) return `participante sem nome em "${parte}"`
     if (!Number.isFinite(peso) || peso <= 0) return `peso inválido para ${nome} ("${pesoBruto}")`
-    lista.push({ nome, peso, ehUsuario: marcado || semAcento(nome) === 'eu' })
+    const participante: ParticipanteInput = {
+      nome,
+      peso,
+      ehUsuario: marcado || semAcento(nome) === 'eu',
+    }
+    if (contribuicaoBruta) {
+      const c = dinheiro(contribuicaoBruta)
+      if (c === null) return `contribuição inválida para ${nome} ("${contribuicaoBruta}")`
+      participante.contribuicaoCentavos = c
+    }
+    lista.push(participante)
   }
   return lista
 }
@@ -397,7 +410,12 @@ export interface ApostaParaExportar {
   jogos: number[][]
   bolao: ApostaInput['bolao']
   valorPagoCentavos: number
-  participantes: { nome: string; peso: number; ehUsuario: boolean }[]
+  participantes: {
+    nome: string
+    peso: number
+    ehUsuario: boolean
+    contribuicaoCentavos?: number | null
+  }[]
   localCompra: string | null
   observacao: string | null
 }
@@ -405,6 +423,11 @@ export interface ApostaParaExportar {
 export type CelulaExportada = string | number | null
 
 const reais = (centavos: number) => centavos / 100
+
+/** 600 → "6,00" (sem "R$", como digitado numa célula). */
+function formatarReais(centavos: number) {
+  return (centavos / 100).toFixed(2).replace('.', ',')
+}
 
 function formatarPeso(peso: number) {
   return String(peso).replace('.', ',')
@@ -448,7 +471,10 @@ export function apostasParaLinhas(
             ? a.participantes
                 .map((p) => {
                   const nome = p.ehUsuario && semAcento(p.nome) !== 'eu' ? `${p.nome}*` : p.nome
-                  return `${nome}:${formatarPeso(p.peso)}`
+                  const base = `${nome}:${formatarPeso(p.peso)}`
+                  return p.contribuicaoCentavos === null || p.contribuicaoCentavos === undefined
+                    ? base
+                    : `${base}:${formatarReais(p.contribuicaoCentavos)}`
                 })
                 .join('; ')
             : null,

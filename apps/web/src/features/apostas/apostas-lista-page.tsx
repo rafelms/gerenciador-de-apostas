@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  FileDown,
   ListChecks,
   Loader2,
   Plus,
@@ -11,7 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { BotaoCopiar } from '@/components/botao-copiar'
@@ -41,6 +42,7 @@ import {
 } from './api'
 import { ApostaCard } from './aposta-card'
 import {
+  filtrosAtivos,
   filtrosDaUrl,
   filtrosParaUrl,
   ORIGENS,
@@ -204,6 +206,7 @@ export function ApostasListaPage() {
   const [selecionando, setSelecionando] = useState(false)
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { data: modalidades } = useModalidades()
 
   const consulta = useInfiniteQuery({
@@ -254,27 +257,7 @@ export function ApostasListaPage() {
 
   // Chips dos filtros ativos (cada um removível).
   const nomeModalidade = modalidades?.find((m) => m.slug === filtros.modalidade)?.nome
-  const ativos: { rotulo: string; remover: Partial<FiltrosApostas> }[] = []
-  if (filtros.modalidade)
-    ativos.push({
-      rotulo: nomeModalidade ?? filtros.modalidade,
-      remover: { modalidade: undefined },
-    })
-  if (filtros.tipo) ativos.push({ rotulo: rotulosTipo[filtros.tipo], remover: { tipo: undefined } })
-  if (filtros.status)
-    ativos.push({ rotulo: rotulosStatus[filtros.status], remover: { status: undefined } })
-  if (filtros.origem)
-    ativos.push({
-      rotulo: `Origem: ${rotulosOrigem[filtros.origem]}`,
-      remover: { origem: undefined },
-    })
-  if (filtros.de)
-    ativos.push({ rotulo: `De ${formatarData(filtros.de)}`, remover: { de: undefined } })
-  if (filtros.ate)
-    ativos.push({ rotulo: `Até ${formatarData(filtros.ate)}`, remover: { ate: undefined } })
-  if (filtros.premiadas) ativos.push({ rotulo: 'Só premiadas', remover: { premiadas: undefined } })
-  if (filtros.concurso)
-    ativos.push({ rotulo: `Concurso ${filtros.concurso}`, remover: { concurso: undefined } })
+  const ativos = filtrosAtivos(filtros, nomeModalidade)
 
   const cards = (itens: ResumoAposta[]) => (
     <ul className="grid gap-3 lg:grid-cols-2">
@@ -352,6 +335,13 @@ export function ApostasListaPage() {
         >
           <ListChecks aria-hidden="true" /> {selecionando ? 'Cancelar' : 'Selecionar'}
         </Button>
+        {!selecionando && (
+          <Button asChild variant="outline">
+            <Link to={`/exportar?${filtrosParaUrl(filtros).toString()}`}>
+              <FileDown aria-hidden="true" /> Exportar
+            </Link>
+          </Button>
+        )}
       </div>
 
       {ativos.length > 0 && (
@@ -388,6 +378,14 @@ export function ApostasListaPage() {
             Todas
           </Button>
           <span className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selecionadas.size === 0}
+            onClick={() => navigate('/exportar', { state: { ids: [...selecionadas] } })}
+          >
+            <FileDown aria-hidden="true" /> Exportar
+          </Button>
           <ConfirmDialog
             titulo={`Excluir ${selecionadas.size} aposta${selecionadas.size === 1 ? '' : 's'}?`}
             descricao="Os jogos, a divisão e os anexos também serão excluídos. Não dá para desfazer."
