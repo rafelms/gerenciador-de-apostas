@@ -867,67 +867,43 @@ Ferramenta para os jogos de uma aposta ou para um conjunto colado/digitado. Foco
 - Formatos BR: `R$ 1.234,56`, `dd/mm/aaaa`, fuso `America/Sao_Paulo`.
 
 ### 12.2 Cores (tokens)
-Cores-base do produto: **`#282B4A`** (azul-marinho) e **`#EEEBDA`** (creme).
-
-```css
-/* apps/web/src/styles/tokens.css — Tailwind v4 @theme */
-@theme {
-  /* Marinho */
-  --color-marinho-950: #1A1C33;
-  --color-marinho-900: #282B4A;   /* BASE */
-  --color-marinho-800: #343860;
-  --color-marinho-700: #444977;
-  --color-marinho-500: #6A6F9E;
-  --color-marinho-300: #A9ACCB;
-  --color-marinho-100: #DCDDEA;
-
-  /* Creme */
-  --color-creme-50:  #F8F6EE;
-  --color-creme-100: #EEEBDA;     /* BASE */
-  --color-creme-200: #E3DEC4;
-  --color-creme-300: #CFC8A6;
-  --color-creme-500: #A39B76;
-
-  /* Destaque (prêmio) */
-  --color-ouro-500: #C9A227;      /* fundos, bordas, bolinhas acertadas */
-  --color-ouro-700: #8A6D12;      /* texto dourado sobre creme (AA) */
-
-  /* Semânticas */
-  --color-sucesso-600: #2E7D4F;
-  --color-perigo-600:  #B23A2B;
-  --color-alerta-600:  #A8660F;
-  --color-info-600:    #3A5A9B;
-}
-```
+Remodelação de 11/2026 (referência visual: o case "Keel", fintech SaaS, no Behance; só a linguagem, nenhuma marca). Paleta **híbrida**: tela cinza neutra, cards brancos, tinta no **marinho da marca `#282B4A`** e acento **verde-menta `#5EE38F`**; o **ouro** continua reservado para prêmio. Fonte da verdade: `apps/web/src/styles/tokens.css` (primitivas) e `index.css` (papéis).
 
 | Papel | Claro | Escuro |
 |---|---|---|
-| Fundo da página | `creme-100` | `marinho-950` |
-| Superfície (cards) | `creme-50` | `marinho-900` |
-| Borda | `creme-300` | `marinho-700` |
-| Texto principal | `marinho-900` | `creme-100` |
-| Texto secundário | `marinho-700` | `marinho-300` |
-| Primário (botões, nav ativa) | `marinho-900` + texto `creme-100` | `creme-100` + texto `marinho-900` |
+| Fundo da página | `cinza-100` #F2F2F4 | `noite-900` #101120 |
+| Superfície (cards) | branco, raio 24 px, sombra suave, sem borda | `noite-800` #1A1C2E com borda `noite-600` |
+| Borda / campos | `cinza-300` | `noite-600` |
+| Texto principal | `marinho-950` | `noite-100` |
+| Texto secundário | `cinza-600` #5E6178 | `noite-300` #A3A6C2 |
+| Primário (botões em pílula) | `marinho-900` + texto branco | `menta-400` + texto `marinho-950` |
+| Tinta (painel lateral, barra inferior, card de destaque) | `marinho-900` | `noite-950` |
+| Acento (nav ativa, botão "+", ícone do card de destaque) | `menta-400` + texto `marinho-950` | idem |
 | Destaque/prêmio | `ouro-500` (texto `ouro-700`) | `ouro-500` |
-| Lucro / prejuízo | `sucesso-600` / `perigo-600` | versões 400 equivalentes |
+| Lucro / prejuízo | `sucesso-600` / `perigo-600` | versões 400 |
 
+- Contraste verificado por script (AA ≥ 4,5:1 em todo par de texto): `cinza-600` 6,1 no branco e 5,4 no fundo; `marinho-900` sobre menta 8,4; `noite-300` sobre `noite-800` 7,0.
+- A menta **nunca** é cor de texto sobre fundo claro (1,4:1): só fundo, com texto escuro em cima.
+- Gráficos: azul/laranja/água revalidados com o `validate_palette.js` sobre o branco e o `noite-800` (o aviso de contraste da água no claro é coberto pela tabela de números de cada gráfico).
 - Tema claro/escuro/sistema nas Configurações (salvo em `preferencias`).
-- **Cor por modalidade** só em detalhes (chip, borda esquerda do card), nunca como fundo de área grande. Valores em `modalidades.cor_hex`.
-- O agente deve checar o contraste de todos os pares texto/fundo (AA ≥ 4.5:1) e ajustar tons se necessário, mantendo as duas bases.
+- **Cor por modalidade** só em detalhes (chip, faixa esquerda do card), nunca como fundo de área grande. Valores em `modalidades.cor_hex`.
 
 ### 12.3 Tipografia
-- Fonte: **Inter** (variável, self-hosted via `@fontsource-variable/inter`, sem Google Fonts para respeitar a CSP).
-- Escala: 12 / 14 / 16 (base) / 18 / 20 / 24 / 30. KPIs em 24–30, peso 700.
+- **Outfit** (geométrica) nos títulos e números grandes; **Inter** no corpo, tabelas e formulários. As duas variáveis e auto-hospedadas (`@fontsource-variable/*`), sem Google Fonts por causa da CSP.
+- Números de destaque em peso leve e grande (saldo do dashboard em 48–60 px) com os **centavos em tom mais claro** (`MoneyText centavosSuaves`); KPIs em 24–30 px, peso 500.
+- Escala do corpo: 12 / 14 / 16 (base) / 18 / 20.
 
 ### 12.4 Componentes próprios
 - `BolaDezena` (estados: neutra, marcada, acertada [ouro], sorteada).
 - `VolanteNumerico` (grade 5×N responsiva, contador e custo ao vivo).
-- `MoneyText` (formatação BRL + cor do sinal).
-- `KpiCard`, `ModalidadeChip`, `StatusBadge`, `EmptyState`, `ConfirmDialog`, `FiltroSheet` (bottom sheet no mobile, popover no desktop).
+- `MoneyText` (formatação BRL, cor do sinal e centavos suaves).
+- `KpiCard` (com a variante `destaque`, o card escuro; no máximo um por tela), `ModalidadeChip`, `StatusBadge`, `EmptyState`, `ConfirmDialog`, `FiltroSheet` (bottom sheet no mobile, popover no desktop).
+- Botões e abas em **pílula** (a aba ativa fica no primário); campos com raio de 12 px.
 
 ### 12.5 Navegação
-- **Mobile:** bottom nav com 5 itens — Início, Apostas, **[+] Nova** (botão central destacado), Calendário, Mais (Resultados, Analisador, Importar, Orçamento, Configurações, Admin).
-- **Desktop (≥ lg):** sidebar fixa à esquerda com os mesmos itens; topo com seletor de período, sino e avatar.
+- **Mobile:** barra inferior flutuante em pílula escura com 5 itens — Início, Apostas, **[+] Nova** (círculo menta no centro), Calendário, Mais (Resultados, Analisador, Importar, Orçamento, Configurações, Admin).
+- **Desktop (≥ lg):** painel lateral escuro e flutuante com os mesmos itens (ativo em menta); topo com sino e avatar.
+- **Telas públicas:** no desktop, painel escuro com a proposta do app à esquerda e o formulário à direita; no celular, só o formulário.
 
 ### 12.6 Rotas
 | Rota | Tela | Acesso |
