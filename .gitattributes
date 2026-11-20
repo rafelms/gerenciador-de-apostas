@@ -1,0 +1,9 @@
+# Fim de linha LF em todo o repositório (o Prettier e o sync:shared:check esperam LF).
+# Sem isto, o checkout no Windows (core.autocrlf=true) troca por CRLF e as checagens falham localmente.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.woff2 binary

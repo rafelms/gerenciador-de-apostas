@@ -1,13 +1,18 @@
 name: Cron — resultados
 
-# Sincroniza os resultados das loterias e, de quebra, mantém o projeto Supabase Free
-# ativo (ele pausa após 7 dias sem atividade) — seções 3 (ADR-07) e 10.4.
-#   22h30 BRT (01h30 UTC): depois dos sorteios da noite
-#   09h00 BRT (12h00 UTC): repescagem, caso a API da CAIXA tenha falhado à noite
+# Sincronização de resultados (seção 10.4). Também evita que o projeto Supabase gratuito
+# pause por inatividade.
+#
+# O GitHub atrasa execuções agendadas (em nov/2026, as das 01h30 e 12h00 UTC rodavam
+# ~7 h depois). Por isso há vários horários, em minutos "quebrados" (fora do pico da hora
+# cheia), cobrindo a noite dos sorteios (~20h BRT) e a manhã seguinte. Rodar a mais é
+# inofensivo: a sincronização é idempotente e leva ~20 s.
 on:
   schedule:
-    - cron: '30 1 * * *'
-    - cron: '0 12 * * *'
+    - cron: '41 0 * * *' # 21h41 BRT
+    - cron: '13 2 * * *' # 23h13 BRT
+    - cron: '7 6 * * *' # 03h07 BRT
+    - cron: '37 11 * * *' # 08h37 BRT
   workflow_dispatch:
 
 concurrency:
@@ -20,19 +25,33 @@ jobs:
     timeout-minutes: 10
     environment: producao
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: scripts
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      # A CAIXA bloqueia a nuvem do Supabase (pendência P4): o runner busca os resultados
-      # e os entrega à function; se a CAIXA bloquear o runner também, a function usa a API
-      # alternativa. O log tem só contagens e o resumo por modalidade (sem dados de usuários).
       - name: Buscar na CAIXA e sincronizar
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
         run: node scripts/buscar-resultados-caixa.mjs
+
+  # Em repositório público, o GitHub DESATIVA workflows agendados após 60 dias sem
+  # atividade no repositório. Reativar os workflows agendados pela API zera esse prazo,
+  # sem commits.
+  manter-ativo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: write
+    steps:
+      - name: Reativar os workflows agendados (zera o prazo de 60 dias)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for wf in cron-resultados.yml backup-banco.yml; do
+            gh api --method PUT "repos/${{ github.repository }}/actions/workflows/$wf/enable"
+          done

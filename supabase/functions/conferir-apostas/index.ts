@@ -17,6 +17,12 @@ import { supabaseAdmin } from '../_shared/supabase-admin.ts'
 const porConcurso = z.object({ concurso_id: z.number().int().positive() })
 const porAposta = z.object({ aposta_id: z.uuid() })
 
+/**
+ * O formulário confere em segundo plano a cada aposta salva; 30/min cobre quem registra
+ * várias apostas seguidas sem deixar um usuário martelar as APIs de resultados.
+ */
+const LIMITE_POR_MINUTO = 30
+
 Deno.serve(async (req) => {
   const preflight = responderPreflight(req)
   if (preflight) return preflight
@@ -38,6 +44,13 @@ Deno.serve(async (req) => {
 
     const chamador = await obterChamador(req)
     if (!chamador?.ativo) return erro(req, 401, 'Sessão inválida.')
+    // Cada chamada pode consultar a CAIXA ou a API alternativa: limite por usuário.
+    // O contador é o mesmo das outras functions (fn_registrar_chamada_admin).
+    const { data: dentroDoLimite } = await supabaseAdmin.rpc('fn_registrar_chamada_admin', {
+      p_user_id: chamador.id,
+      p_limite: LIMITE_POR_MINUTO,
+    })
+    if (!dentroDoLimite) return erro(req, 429, 'Muitas conferências seguidas. Aguarde um minuto.')
     const entrada = porAposta.safeParse(corpo)
     if (!entrada.success) return erro(req, 400, 'Dados inválidos.')
 

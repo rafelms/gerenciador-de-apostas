@@ -24,7 +24,9 @@ async function convidar(req: Request, corpo: unknown): Promise<Response> {
     return erro(req, 409, `Limite de ${LIMITE_USUARIOS_ATIVOS} usuários ativos atingido.`)
   }
 
-  const origem = req.headers.get('origin') ?? cabecalhosCors(req)['Access-Control-Allow-Origin']
+  // O link do convite só aponta para um domínio da lista ALLOWED_ORIGIN (nunca para um
+  // Origin arbitrário mandado na requisição).
+  const origem = cabecalhosCors(req)['Access-Control-Allow-Origin']
   const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(entrada.data.email, {
     data: { nome: entrada.data.nome }, // o trigger handle_new_user usa este nome no perfil
     redirectTo: `${origem}/convite`,
@@ -40,12 +42,30 @@ async function desativar(req: Request, corpo: unknown, chamadorId: string): Prom
   const { user_id } = entrada.data
   if (user_id === chamadorId) return erro(req, 400, 'Você não pode desativar a si mesmo.')
 
-  const { error } = await supabaseAdmin.from('profiles').update({ ativo: false }).eq('id', user_id)
+  // A RLS bloqueia o usuário assim que `ativo` vira false; o ban impede novos logins e
+  // refresh, e a revogação derruba as sessões abertas. Todas as etapas são idempotentes:
+  // se uma falhar, o admin tenta de novo.
+  const { data: perfil, error } = await supabaseAdmin
+    .from('profiles')
+    .update({ ativo: false })
+    .eq('id', user_id)
+    .select('id')
+    .maybeSingle()
   if (error) return erro(req, 400, 'Não foi possível desativar.')
+  if (!perfil) return erro(req, 404, 'Usuário não encontrado.')
 
-  // Bloqueia novos logins/refresh e derruba as sessões abertas.
-  await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: BAN_DESATIVADO })
-  await supabaseAdmin.rpc('fn_revogar_sessoes', { p_user_id: user_id })
+  const ban = await supabaseAdmin.auth.admin.updateUserById(user_id, {
+    ban_duration: BAN_DESATIVADO,
+  })
+  const sessoes = await supabaseAdmin.rpc('fn_revogar_sessoes', { p_user_id: user_id })
+  if (ban.error || sessoes.error) {
+    console.error('admin-usuarios/desativar:', ban.error?.message ?? sessoes.error?.message)
+    return erro(
+      req,
+      500,
+      'O usuário foi desativado, mas o bloqueio do login não terminou. Tente de novo.',
+    )
+  }
 
   return json(req, { ok: true })
 }
@@ -55,17 +75,32 @@ async function reativar(req: Request, corpo: unknown): Promise<Response> {
   if (!entrada.success) return erro(req, 400, 'Dados inválidos.')
   const { user_id } = entrada.data
 
-  const { count } = await supabaseAdmin
+  const { data: alvo } = await supabaseAdmin
     .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .eq('ativo', true)
-  if ((count ?? 0) >= LIMITE_USUARIOS_ATIVOS) {
-    return erro(req, 409, `Limite de ${LIMITE_USUARIOS_ATIVOS} usuários ativos atingido.`)
+    .select('ativo')
+    .eq('id', user_id)
+    .maybeSingle()
+  if (!alvo) return erro(req, 404, 'Usuário não encontrado.')
+
+  // Quem já está ativo não ocupa uma vaga nova (reativar de novo só refaz o desbloqueio).
+  if (!alvo.ativo) {
+    const { count } = await supabaseAdmin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('ativo', true)
+    if ((count ?? 0) >= LIMITE_USUARIOS_ATIVOS) {
+      return erro(req, 409, `Limite de ${LIMITE_USUARIOS_ATIVOS} usuários ativos atingido.`)
+    }
   }
 
+  // Desbloqueia o login antes de liberar o acesso aos dados.
+  const ban = await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: 'none' })
+  if (ban.error) {
+    console.error('admin-usuarios/reativar:', ban.error.message)
+    return erro(req, 500, 'Não foi possível reativar. Tente de novo.')
+  }
   const { error } = await supabaseAdmin.from('profiles').update({ ativo: true }).eq('id', user_id)
   if (error) return erro(req, 400, 'Não foi possível reativar.')
-  await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: 'none' })
 
   return json(req, { ok: true })
 }

@@ -9,23 +9,25 @@ Contexto para agentes e pessoas que mexem no repositório: como o código sai de
 ## 1. Visão geral
 
 ```
-branch de trabalho ──PR──▶ CI (ci.yml) ──verde──▶ merge na main
-                                                    │
-                     ┌──────────────────────────────┼──────────────────────────────┐
-                     ▼                              ▼                              ▼
-           Deploy Supabase                  Vercel (front)                Cron de resultados
-        (deploy-supabase.yml)            integração Git própria         (cron-resultados.yml)
-     migrations + Edge Functions        preview em PR, prod na main       2×/dia, independente
+branch de trabalho ──PR──▶ CI (ci.yml) ──verde──▶ merge na main ──▶ CI da main ──verde──▶ Deploy Supabase
+                                                    │                                    (deploy-supabase.yml)
+                                                    ▼                                 migrations + Edge Functions
+                                             Vercel (front)
+                                         integração Git própria
+                                       preview em PR, prod na main
+
+Independentes: Cron de resultados (cron-resultados.yml, 4×/dia) e backup mensal cifrado (backup-banco.yml)
 ```
 
-| Peça                            | Onde roda                | Gatilho                                                                      |
-| ------------------------------- | ------------------------ | ---------------------------------------------------------------------------- |
-| CI                              | GitHub Actions           | todo PR e todo push na `main`                                                |
-| Deploy do banco e das functions | GitHub Actions           | push na `main` que mexe em `supabase/**` ou `packages/shared/src/**`; manual |
-| Deploy do front                 | Vercel (fora do Actions) | integração Git: preview por PR, produção na `main`                           |
-| Sincronização de resultados     | GitHub Actions           | agendado (22h30 e 09h00, horário de Brasília); manual                        |
+| Peça                            | Onde roda                | Gatilho                                                   |
+| ------------------------------- | ------------------------ | --------------------------------------------------------- |
+| CI                              | GitHub Actions           | todo PR e todo push na `main`                             |
+| Deploy do banco e das functions | GitHub Actions           | CI verde de um push na `main` (`workflow_run`); manual    |
+| Deploy do front                 | Vercel (fora do Actions) | integração Git: preview por PR, produção na `main`        |
+| Sincronização de resultados     | GitHub Actions           | agendado 4×/dia (21h41, 23h13, 03h07 e 08h37 BRT); manual |
+| Backup do banco                 | GitHub Actions           | dia 1 de cada mês; manual                                 |
 
-**Situação atual:** a produção existe (Supabase e Vercel, montadas em 21/10) e os três workflows funcionam. A API da CAIXA responde **HTTP 403** às Edge Functions na nuvem (pendência P4 da spec); por isso o cron busca os resultados a partir do runner do GitHub, com a API alternativa como reserva (seção 3.3 e [sessao-2026-10-21.md](sessao-2026-10-21.md), seção 12).
+**Situação atual:** a produção existe (Supabase e Vercel, montadas em 21/10) e os workflows funcionam. A API da CAIXA responde **HTTP 403** às Edge Functions na nuvem (pendência P4 da spec), mas responde ao runner do GitHub: o cron busca lá e entrega as respostas à function (em nov/2026, as 4 modalidades vinham com `fonte: api_caixa`). A API alternativa fica como reserva (seção 3.3, [sessao-2026-10-21.md](sessao-2026-10-21.md), seção 12, e [sessao-2026-11-20.md](sessao-2026-11-20.md)).
 
 ---
 
@@ -52,14 +54,14 @@ branch de trabalho ──PR──▶ CI (ci.yml) ──verde──▶ merge na m
 
 ### 2.4 Versões de ferramentas
 
-| Ferramenta     | Como é fixada                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| pnpm           | `packageManager` no `package.json` raiz; o `pnpm/action-setup` lê dali                                                               |
-| Node           | `engines.node >= 22`; o CI usa 22, e o desenvolvimento local, 24                                                                     |
-| Dependências   | `pnpm-lock.yaml` versionado; o CI instala com `--frozen-lockfile`                                                                    |
-| Supabase CLI   | devDependency do projeto (CI e local); o workflow de deploy usa a `latest` do `supabase/setup-cli` (ponto de atenção: pode divergir) |
-| Deno           | major 2 (CI: `v2.x`; `deno_version = 2` no `config.toml`)                                                                            |
-| GitHub Actions | fixadas por major (`@v4`, `@v2`, `@v1`)                                                                                              |
+| Ferramenta     | Como é fixada                                                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pnpm           | `packageManager` no `package.json` raiz; o `pnpm/action-setup` lê dali                                                                            |
+| Node           | `engines.node >= 22`; o CI usa 22, e o desenvolvimento local, 24                                                                                  |
+| Dependências   | `pnpm-lock.yaml` versionado; o CI instala com `--frozen-lockfile`                                                                                 |
+| Supabase CLI   | devDependency do projeto (CI e local); os workflows de deploy e backup fixam a **mesma** versão no `supabase/setup-cli` (atualize os três juntos) |
+| Deno           | major 2 (CI: `v2.x`; `deno_version = 2` no `config.toml`)                                                                                         |
+| GitHub Actions | fixadas por major, em versões que rodam em Node 24 (`checkout@v7`, `setup-node@v7`, `pnpm/action-setup@v6`, `setup-cli@v3`…)                      |
 
 Ao atualizar uma dessas versões, faça isso em um commit `chore:` próprio e confira se o CI continua verde.
 
@@ -85,19 +87,20 @@ O CI **não usa secrets**. Tudo roda contra o Supabase local, com as chaves púb
 
 ### 3.2 `deploy-supabase.yml`: banco e Edge Functions
 
-- **Gatilho:** push na `main` que altere `supabase/**` ou `packages/shared/src/**`, ou execução manual.
+- **Gatilho:** `workflow_run` do CI: roda quando o CI de um **push na `main`** termina **verde**, publicando exatamente o commit que o CI aprovou. Também pode ser disparado à mão. Um merge que quebra o CI não chega à produção.
 - **Environment:** `producao` (só a `main` pode usá-lo). As credenciais vêm dos secrets desse environment.
-- **Passos:** confere a cópia do shared, liga o CLI ao projeto de produção, roda `supabase db push` (aplica as migrations novas) e `supabase functions deploy` (publica todas as functions).
+- **Passos:** confere a cópia do shared, liga o CLI ao projeto de produção, roda `supabase db push` (aplica as migrations novas; sem migration nova, não faz nada) e `supabase functions deploy` (publica todas as functions). Roda a cada merge, mesmo sem mudança em `supabase/`, o que é inofensivo.
 - Os deploys não rodam em paralelo (`concurrency` sem cancelamento).
-- **Limitação conhecida:** o workflow não espera o CI da `main` terminar. A meta, ainda pendente, é encadear o deploy do banco e o do front depois do CI verde.
+- **Limitação conhecida:** o front (Vercel) ainda publica sozinho a cada push, sem esperar o CI. Para encadear, ligue na Vercel o bloqueio da promoção a produção até os checks do GitHub passarem (Deployment Checks) com o check `ci`.
 
 ### 3.3 `cron-resultados.yml`: sincronização agendada
 
-- Roda às 01h30 e às 12h00 UTC (22h30 e 09h00 em Brasília) e também pode ser disparado à mão.
+- Agendado em 4 horários (21h41, 23h13, 03h07 e 08h37 em Brasília), em minutos fora da hora cheia, e também pode ser disparado à mão. O GitHub **atrasa** execuções agendadas: em nov/2026, as de 01h30 e 12h00 UTC rodavam ~7 h depois. Vários horários garantem que pelo menos uma execução caia perto do sorteio; rodar a mais é inofensivo (idempotente, ~20 s).
 - Roda `scripts/buscar-resultados-caixa.mjs` no runner: pede à Edge Function `sync-resultados` os concursos que as apostas precisam (`/pendencias`), busca esses concursos na API da CAIXA **a partir do runner** (a CAIXA bloqueia a nuvem do Supabase, pendência P4) e entrega as respostas à function, que normaliza, grava, confere as apostas e processa os prazos de prêmios.
 - Se a CAIXA também não responder ao runner, o job segue: a function busca na API alternativa (spec, seção 10.1). O log mostra, por modalidade, se o último concurso veio da CAIXA, e o resumo traz `fonte` (`api_caixa` ou `api_alternativa`).
 - Também evita que o projeto Supabase gratuito pause por inatividade.
-- Falha em uma modalidade não derruba o job (fica registrada no log de sincronização). O job só falha em erro geral, quando a resposta não é 200. Por isso um job **verde** pode ter todas as modalidades com erro: confira o resumo no log do job ou a tabela `sync_logs`.
+- Falha em uma modalidade não derruba o job: vira um **aviso** no resumo do job e fica no `sync_logs`. O job falha se a resposta não for 200 ou se **todas** as modalidades falharem (aí o GitHub avisa por e-mail).
+- **Manter ativo:** em repositório público, o GitHub desativa workflows agendados após 60 dias sem atividade no repositório. O job `manter-ativo` reativa pela API o cron e o backup a cada execução, o que zera esse prazo sem precisar de commits.
 - Resultados lançados à mão (admin), informados por usuários ou vindos da API alternativa não são definitivos: o cron busca esses concursos de novo e os substitui pelo da CAIXA assim que ela responder.
 - A resposta impressa no log contém só o resumo por modalidade, sem dados de usuários.
 
@@ -106,6 +109,12 @@ O CI **não usa secrets**. Tudo roda contra o Supabase local, com as chaves púb
 ### 3.4 Deploy do front (Vercel)
 
 Fica fora do GitHub Actions: a Vercel observa o repositório, publica um preview por PR e a produção a cada push na `main`. O Root Directory é `apps/web`. O `vercel.json` define os headers de segurança (CSP etc.) e os rewrites da SPA, e o e2e `headers-producao` verifica esses headers quando há uma URL de produção.
+
+### 3.5 `backup-banco.yml`: backup mensal cifrado (P6)
+
+- Roda no dia 1 de cada mês (04h23 BRT) e à mão. Faz o dump de papéis, schema e dados da produção com o Supabase CLI, compacta e **cifra com gpg (AES-256)** antes de publicar como artefato do workflow, guardado por 90 dias.
+- O repositório é público: o artefato pode ser baixado por terceiros, por isso nunca sai sem cifra. Sem o secret `BACKUP_PASSPHRASE` (20+ caracteres, no environment `producao`), o job falha **antes** de ler o banco. Guarde a senha também fora do GitHub (gerenciador de senhas): sem ela o backup não abre.
+- **Restaurar:** baixe o artefato e rode `gpg --decrypt lotogestor-AAAA-MM-DD.tar.gz.gpg | tar -xz`. Aplique, num banco vazio, `roles.sql`, `schema.sql` e `data.sql`, nessa ordem (por exemplo, com `psql` na connection string do projeto novo).
 
 ---
 

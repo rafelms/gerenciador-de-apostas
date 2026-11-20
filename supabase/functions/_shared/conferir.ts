@@ -224,22 +224,35 @@ async function gravarDivisao(
       .order('ordem'),
     'ler participantes',
   )
-  exigir(await db.from('premio_divisoes').delete().eq('premio_id', premio.id), 'limpar a divisão')
-  if (participantes.length === 0) return
+  if (participantes.length === 0) {
+    exigir(await db.from('premio_divisoes').delete().eq('premio_id', premio.id), 'limpar a divisão')
+    return
+  }
   const linhas = dividirPremio(
     premio,
     participantes.map((p) => ({ nome: p.nome, peso: Number(p.peso), ehUsuario: p.eh_usuario })),
   )
+  // Upsert primeiro e só depois remove quem saiu: se uma das escritas falhar, a divisão
+  // anterior continua lá (antes, apagar e reinserir podia deixá-la vazia).
   exigir(
-    await db.from('premio_divisoes').insert(
+    await db.from('premio_divisoes').upsert(
       participantes.map((p, i) => ({
         premio_id: premio.id,
         participante_id: p.id,
         user_id: aposta.user_id,
         liquido_centavos: linhas[i]!.liquido,
       })),
+      { onConflict: 'premio_id,participante_id' },
     ),
     'gravar a divisão',
+  )
+  exigir(
+    await db
+      .from('premio_divisoes')
+      .delete()
+      .eq('premio_id', premio.id)
+      .not('participante_id', 'in', `(${participantes.map((p) => p.id).join(',')})`),
+    'limpar a divisão',
   )
 }
 
@@ -267,11 +280,22 @@ async function atualizarStatus(db: SupabaseClient, aposta: Aposta) {
 }
 
 /**
- * Uma notificação por usuário e concurso (chave_dedup = 'resultado:{concurso_id}').
- * `renotificar`: o resultado foi corrigido (ex.: a API substituiu um informado à mão),
- * então a notificação existente é reescrita e volta como não lida.
+ * Como tratar a notificação que o usuário já tem para o concurso:
+ * - `manter`: não mexe (conferência de UMA aposta, que não enxerga as outras do usuário
+ *   no mesmo concurso e reescreveria o texto agregado);
+ * - `atualizar`: reescreve e marca como não lida só se o texto mudou (ex.: o rateio saiu
+ *   depois das dezenas e o "valor a confirmar" virou o valor do prêmio);
+ * - `renotificar`: o resultado foi corrigido (ex.: a API substituiu um informado à mão),
+ *   então reescreve e marca como não lida sempre.
  */
-async function notificar(ctx: Contexto, resultados: ResultadoAposta[], renotificar = false) {
+type ModoNotificacao = 'manter' | 'atualizar' | 'renotificar'
+
+/** Uma notificação por usuário e concurso (chave_dedup = 'resultado:{concurso_id}'). */
+async function notificar(
+  ctx: Contexto,
+  resultados: ResultadoAposta[],
+  modo: ModoNotificacao = 'manter',
+) {
   const porUsuario = new Map<string, ResultadoAposta[]>()
   for (const r of resultados) porUsuario.set(r.userId, [...(porUsuario.get(r.userId) ?? []), r])
 
@@ -294,14 +318,46 @@ async function notificar(ctx: Contexto, resultados: ResultadoAposta[], renotific
       corpo: texto.corpo,
       link: alvo ? `/apostas/${alvo.apostaId}` : '/resultados',
       chave_dedup: `resultado:${ctx.concurso.id}`,
-      ...(renotificar ? { lida_em: null, created_at: new Date().toISOString() } : {}),
     }
   })
   if (linhas.length === 0) return
-  exigir(
+
+  if (modo === 'manter') {
+    exigir(
+      await ctx.db
+        .from('notificacoes')
+        .upsert(linhas, { onConflict: 'user_id,chave_dedup', ignoreDuplicates: true }),
+      'gravar notificações',
+    )
+    return
+  }
+
+  const existentes = exigir<
+    { user_id: string; tipo: string; titulo: string; corpo: string | null; link: string | null }[]
+  >(
     await ctx.db
       .from('notificacoes')
-      .upsert(linhas, { onConflict: 'user_id,chave_dedup', ignoreDuplicates: !renotificar }),
+      .select('user_id, tipo, titulo, corpo, link')
+      .eq('chave_dedup', `resultado:${ctx.concurso.id}`)
+      .in(
+        'user_id',
+        linhas.map((l) => l.user_id),
+      ),
+    'ler notificações',
+  )
+  const anteriores = new Map(existentes.map((e) => [e.user_id, e]))
+  const agora = new Date().toISOString()
+  const gravar = linhas.flatMap((l) => {
+    const e = anteriores.get(l.user_id)
+    if (!e) return [l]
+    const mudou =
+      e.tipo !== l.tipo || e.titulo !== l.titulo || e.corpo !== l.corpo || e.link !== l.link
+    if (!mudou && modo !== 'renotificar') return []
+    return [{ ...l, lida_em: null, created_at: agora }]
+  })
+  if (gravar.length === 0) return
+  exigir(
+    await ctx.db.from('notificacoes').upsert(gravar, { onConflict: 'user_id,chave_dedup' }),
     'gravar notificações',
   )
 }
@@ -337,7 +393,9 @@ export async function conferirConcurso(
     resultados.push(await conferirApostaNoConcurso(ctx, aposta))
     await atualizarStatus(db, aposta)
   }
-  await notificar(ctx, resultados, opcoes.renotificar)
+  // Aqui entram TODAS as apostas do concurso, então o texto agregado por usuário é
+  // completo e pode substituir o anterior.
+  await notificar(ctx, resultados, opcoes.renotificar ? 'renotificar' : 'atualizar')
   return {
     concursoId,
     apostasConferidas: resultados.length,
