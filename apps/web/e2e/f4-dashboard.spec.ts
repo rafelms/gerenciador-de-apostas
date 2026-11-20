@@ -4,6 +4,7 @@ import {
   admin,
   clienteAnonimo,
   criarUsuario,
+  entrarComoAdminComMfa,
   entrarPelaTela,
   limparUsuariosDeTeste,
   semRolagemHorizontal,
@@ -328,5 +329,36 @@ test.describe('Orçamento (F4.4)', () => {
     await page.getByRole('button', { name: 'Excluir o limite Geral' }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Excluir' }).click()
     await expect(page.getByText('Nenhum limite neste mês')).toBeVisible()
+  })
+})
+
+test.describe('Métricas do admin (F4.5)', () => {
+  test('admin vê só os agregados de cada usuário, com totais gerais', async ({ page }) => {
+    const { id, email } = await criarUsuario('membro')
+    const nome = `Membro Métricas ${id.slice(0, 6)}`
+    await admin.from('profiles').update({ nome }).eq('id', id)
+    await semearApostas(email, id)
+
+    await entrarComoAdminComMfa(page)
+    await page.goto('/admin')
+    await page.getByRole('link', { name: /Métricas/ }).click()
+    await expect(page).toHaveURL('/admin/metricas')
+    await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible()
+
+    await page.getByLabel('Período', { exact: true }).selectOption('tudo')
+    await expect(page).toHaveURL('/admin/metricas?periodo=tudo')
+
+    const linha = page
+      .getByRole('table', { name: 'Métricas por usuário' })
+      .getByRole('row')
+      .filter({ has: page.getByRole('rowheader', { name: new RegExp(nome) }) })
+    await expect(linha).toContainText('3 apostas')
+    await expect(linha).toContainText('última em 05/11/2026')
+    await expect(linha.getByRole('cell').nth(0)).toHaveText('R$ 15,50')
+    await expect(linha.getByRole('cell').nth(1)).toHaveText('R$ 1.000,00')
+    await expect(linha).toContainText('Mega-Sena')
+    await expect(linha).toContainText('Lotofácil')
+    await expect(page.getByRole('region', { name: 'Gasto e recuperado por usuário' })).toBeVisible()
+    await semRolagemHorizontal(page)
   })
 })

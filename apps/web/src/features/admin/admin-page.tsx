@@ -24,11 +24,10 @@ const areas = [
     icone: Settings,
   },
   {
-    rota: '/admin',
+    rota: '/admin/metricas',
     titulo: 'Métricas',
-    descricao: 'Agregados por usuário (fase 4).',
+    descricao: 'Gasto, recuperado e ROI por usuário (só agregados).',
     icone: BarChart3,
-    emBreve: true,
   },
 ]
 
@@ -40,14 +39,10 @@ export function AdminPage() {
         descricao="Você vê apenas dados cadastrais e métricas agregadas de outros usuários."
       />
       <ul className="grid gap-3 sm:grid-cols-2">
-        {areas.map(({ rota, titulo, descricao, icone: Icone, emBreve }) => (
+        {areas.map(({ rota, titulo, descricao, icone: Icone }) => (
           <li key={titulo}>
             <Card className="p-0 transition-colors duration-150 hover:bg-accent">
-              <Link
-                to={rota}
-                aria-disabled={emBreve}
-                className="flex min-h-20 items-center gap-4 p-4 aria-disabled:pointer-events-none aria-disabled:opacity-60"
-              >
+              <Link to={rota} className="flex min-h-20 items-center gap-4 p-4">
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted">
                   <Icone className="size-5" aria-hidden="true" />
                 </span>
