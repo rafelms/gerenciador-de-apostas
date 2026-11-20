@@ -6,7 +6,9 @@ export const chaves = {
   apostas: ['apostas'] as const,
   listaApostas: (filtros: object) => ['apostas', 'lista', filtros] as const,
   aposta: (id: string) => ['apostas', 'detalhe', id] as const,
-  resumoPeriodo: (inicio: string, fim: string) => ['apostas', 'resumo', inicio, fim] as const,
+  // Sob 'apostas': salvar, excluir ou conferir apostas refaz o dashboard.
+  dashboard: (inicio: string | null, fim: string | null, modalidadeId: number | null) =>
+    ['apostas', 'dashboard', inicio, fim, modalidadeId] as const,
   // Sob 'apostas': invalidar as apostas também refaz a conferência exibida.
   conferencia: (apostaId: string) => ['apostas', 'conferencia', apostaId] as const,
   configPremio: ['configuracoes', 'premio'] as const,

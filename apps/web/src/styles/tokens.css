@@ -38,4 +38,13 @@
   --color-perigo-400: #f08a7c;
   --color-alerta-400: #e3a54a;
   --color-info-400: #93aee8;
+
+  /* Gráficos: azul, laranja e água em passos para o claro (600) e o escuro (400).
+     Validados com o validate_palette.js (CVD e luminosidade) sobre creme-50 e marinho-900. */
+  --color-grafico-azul-600: #2a78d6;
+  --color-grafico-laranja-600: #eb6834;
+  --color-grafico-agua-600: #1baf7a;
+  --color-grafico-azul-400: #3987e5;
+  --color-grafico-laranja-400: #d95926;
+  --color-grafico-agua-400: #199e70;
 }
