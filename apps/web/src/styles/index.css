@@ -34,6 +34,9 @@
   --prejuizo: var(--color-perigo-600);
   --alerta: var(--color-alerta-600);
   --info: var(--color-info-600);
+  --serie-1: var(--color-grafico-azul-600);
+  --serie-2: var(--color-grafico-laranja-600);
+  --serie-3: var(--color-grafico-agua-600);
   --radius: 0.75rem;
 }
 
@@ -62,6 +65,9 @@
   --prejuizo: var(--color-perigo-400);
   --alerta: var(--color-alerta-400);
   --info: var(--color-info-400);
+  --serie-1: var(--color-grafico-azul-400);
+  --serie-2: var(--color-grafico-laranja-400);
+  --serie-3: var(--color-grafico-agua-400);
 }
 
 @theme inline {
@@ -90,6 +96,9 @@
   --color-prejuizo: var(--prejuizo);
   --color-alerta: var(--alerta);
   --color-info: var(--info);
+  --color-serie-1: var(--serie-1);
+  --color-serie-2: var(--serie-2);
+  --color-serie-3: var(--serie-3);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
