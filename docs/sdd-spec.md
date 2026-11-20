@@ -1055,11 +1055,11 @@ Cores-base do produto: **`#282B4A`** (azul-marinho) e **`#EEEBDA`** (creme).
 | F3.7 (opcional, 3b) | Fallback OCR (tesseract.js, carregado sob demanda) para PDFs sem texto e fotos |
 
 **Aceite F3:**
-- [ ] Planilha com 1 linha inválida em 50 → a prévia mostra 49 ok + 1 erro com linha e motivo; ao confirmar, importa as 49 (o usuário escolhe "importar válidas").
-- [ ] Exportar → reimportar em conta limpa → mesmos totais.
-- [ ] A fixture do Apêndice A gera exatamente: Mega-Sena, bolão, concurso 3070, 8 jogos de 7 dezenas, 1 de 38 cotas, cota nº 35, valor cota 884, tarifa 309, total 1193.
-- [ ] Nome e CPF não aparecem em estado persistido, rede (payload do insert) nem logs (teste automatizado inspecionando o payload).
-- [ ] Importar o mesmo PDF duas vezes → a segunda é bloqueada como duplicata.
+- [x] Planilha com 1 linha inválida em 50 → a prévia mostra 49 ok + 1 erro com linha e motivo; ao confirmar, importa as 49 (o usuário escolhe "importar válidas").
+- [x] Exportar → reimportar em conta limpa → mesmos totais.
+- [x] A fixture do Apêndice A gera exatamente: Mega-Sena, bolão, concurso 3070, 8 jogos de 7 dezenas, 1 de 38 cotas, cota nº 35, valor cota 884, tarifa 309, total 1193.
+- [x] Nome e CPF não aparecem em estado persistido, rede (payload do insert) nem logs (teste automatizado inspecionando o payload).
+- [x] Importar o mesmo PDF duas vezes → a segunda é bloqueada como duplicata.
 
 ### FASE 4 — Dashboard avançado, calendário, orçamento e métricas do admin
 | ID | Tarefa |
@@ -1143,7 +1143,7 @@ Dados de teste: **sempre fictícios**. Nunca commitar comprovantes reais.
 | P3 | Amostras de comprovante de aposta simples e de bolão de Lotofácil/Quina | só o parser do Apêndice A |
 | P4 | A API da CAIXA responde a partir do Deno (TLS/headers)? Testar na F2.3 | Local: responde (TLS ok). **Produção (21/10): HTTP 403** a partir das Edge Functions do Supabase, mesmo com cabeçalhos de navegador: bloqueio por IP de nuvem. A API aceita CORS (`*`). **Solução (22/10):** o cron busca na CAIXA a partir do runner do GitHub Actions e, se falhar, a function usa a API alternativa (10.1). Restam o resultado manual do admin e o informado pelo usuário. **Medido (06–20/11/2026):** o runner do GitHub recebe a CAIXA na grande maioria das execuções (28 de 30); o 403 é esporádico, conforme o IP do runner. Nesses casos vale a API alternativa, e a CAIXA substitui o resultado na execução seguinte (4×/dia) |
 | P5 | Limites de bolão (mín. de cotas, valor mínimo) de Lotofácil e Quina | colunas nulas, sem validar |
-| P6 | Backup automático mensal | **Implementado (nov/2026):** `backup-banco.yml`, dump mensal cifrado (gpg AES-256) como artefato de 90 dias; exige o secret `BACKUP_PASSPHRASE`. O "Exportar tudo" (F3) continua previsto |
+| P6 | Backup automático mensal | **Implementado (nov/2026):** `backup-banco.yml`, dump mensal cifrado (gpg AES-256) como artefato de 90 dias; exige o secret `BACKUP_PASSPHRASE`. O "Exportar tudo" veio na F3: `/exportar` sem filtros baixa todas as apostas, prêmios e o resumo |
 
 ---
 
