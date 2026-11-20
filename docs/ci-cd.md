@@ -27,7 +27,7 @@ Independentes: Cron de resultados (cron-resultados.yml, 4×/dia) e backup mensal
 | Sincronização de resultados     | GitHub Actions           | agendado 4×/dia (21h41, 23h13, 03h07 e 08h37 BRT); manual |
 | Backup do banco                 | GitHub Actions           | dia 1 de cada mês; manual                                 |
 
-**Situação atual:** a produção existe (Supabase e Vercel, montadas em 21/10) e os workflows funcionam. A API da CAIXA responde **HTTP 403** às Edge Functions na nuvem (pendência P4 da spec), mas responde ao runner do GitHub: o cron busca lá e entrega as respostas à function (em nov/2026, as 4 modalidades vinham com `fonte: api_caixa`). A API alternativa fica como reserva (seção 3.3, [sessao-2026-10-21.md](sessao-2026-10-21.md), seção 12, e [sessao-2026-11-20.md](sessao-2026-11-20.md)).
+**Situação atual:** a produção existe (Supabase e Vercel, montadas em 21/10) e os workflows funcionam. A API da CAIXA responde **HTTP 403** às Edge Functions na nuvem (pendência P4 da spec), e responde ao runner do GitHub na grande maioria das vezes: o cron busca lá e entrega as respostas à function (de 06 a 20/11/2026, 28 de 30 execuções vieram com `fonte: api_caixa`; nas outras 2, o runner levou 403 e valeu a API alternativa até a execução seguinte). A API alternativa fica como reserva (seção 3.3, [sessao-2026-10-21.md](sessao-2026-10-21.md), seção 12, e [sessao-2026-11-20.md](sessao-2026-11-20.md)).
 
 ---
 
