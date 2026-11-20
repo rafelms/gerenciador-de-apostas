@@ -460,6 +460,11 @@ isOneToOne: false
               "ativo": boolean,"created_at": string,"email": string,"id": string,"nome": string,"papel": Database["public"]['Enums']["papel_usuario"],"ultimo_acesso": string
             }[]
                            },
+"fn_calendario":
+{ Args: { "p_fim": string,"p_inicio": string }; Returns: {
+              "aposta_id": string,"concurso": number,"data": string,"estimada": boolean,"modalidade_cor": string,"modalidade_nome": string,"modalidade_slug": string,"premio_id": string,"qtd": number,"sorteado": boolean,"tipo": string,"valor_centavos": number
+            }[]
+                           },
 "fn_concursos_sorteados_da_importacao":
 { Args: { "p_importacao_id": string,"p_user_id": string }; Returns: {
               "concurso_id": number

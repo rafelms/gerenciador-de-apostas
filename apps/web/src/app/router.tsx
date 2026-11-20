@@ -106,7 +106,9 @@ export const router = createBrowserRouter([
               },
               {
                 path: '/calendario',
-                lazy: async () => ({ Component: (await futuras()).CalendarioPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/calendario/calendario-page')).CalendarioPage,
+                }),
               },
               {
                 path: '/analisador',

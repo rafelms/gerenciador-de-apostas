@@ -28,18 +28,17 @@ export interface ItemNav {
   emBreve?: number
 }
 
-// Bottom nav do mobile (seção 12.5): exatamente 5 itens, "Nova" no centro. O Calendário
-// (seção 12.5) volta para cá quando a F4 entregar a tela; até lá, Resultados ocupa o lugar.
+// Bottom nav do mobile (seção 12.5): exatamente 5 itens, "Nova" no centro.
 export const navPrincipal: ItemNav[] = [
   { rota: '/', rotulo: 'Início', icone: Home },
   { rota: '/apostas', rotulo: 'Apostas', icone: Ticket },
   { rota: '/apostas/nova', rotulo: 'Nova', icone: Plus },
-  { rota: '/resultados', rotulo: 'Resultados', icone: Trophy },
+  { rota: '/calendario', rotulo: 'Calendário', icone: CalendarDays },
 ]
 
 // Itens do menu "Mais" (mobile) — também listados na sidebar do desktop.
 const todosMais: ItemNav[] = [
-  { rota: '/calendario', rotulo: 'Calendário', icone: CalendarDays, emBreve: 4 },
+  { rota: '/resultados', rotulo: 'Resultados', icone: Trophy },
   { rota: '/analisador', rotulo: 'Analisador', icone: Microscope, emBreve: 5 },
   { rota: '/importar', rotulo: 'Importar', icone: FileUp },
   { rota: '/exportar', rotulo: 'Exportar', icone: FileDown },

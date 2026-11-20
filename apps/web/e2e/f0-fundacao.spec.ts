@@ -214,20 +214,21 @@ test.describe('Layout responsivo', () => {
         page.getByRole('navigation', { name: 'Navegação principal' }).getByText('Mais'),
       ).toBeVisible()
       const nav = page.getByRole('navigation', { name: 'Navegação principal' })
-      await nav.getByRole('link', { name: 'Resultados' }).click()
-      await expect(page).toHaveURL('/resultados')
+      await nav.getByRole('link', { name: 'Calendário' }).click()
+      await expect(page).toHaveURL('/calendario')
       await page.getByRole('button', { name: 'Mais' }).click()
       const mais = page.getByRole('dialog', { name: 'Mais opções' })
       await expect(mais).toBeVisible()
+      await expect(mais.getByRole('link', { name: 'Resultados' })).toBeVisible()
       // Telas de fases futuras ficam fora do menu.
-      await expect(mais.getByRole('link', { name: 'Importar' })).toBeVisible()
-      await expect(mais.getByRole('link', { name: 'Calendário' })).toHaveCount(0)
+      await expect(mais.getByRole('link', { name: 'Analisador' })).toHaveCount(0)
       await mais.getByRole('link', { name: 'Simular divisão' }).click()
       await expect(page).toHaveURL('/simulador-rateio')
     } else {
       const lateral = page.locator('aside')
       await expect(lateral.getByRole('link', { name: 'Resultados' })).toBeVisible()
-      await expect(lateral.getByRole('link', { name: 'Calendário' })).toHaveCount(0)
+      await expect(lateral.getByRole('link', { name: 'Calendário' })).toBeVisible()
+      await expect(lateral.getByRole('link', { name: 'Analisador' })).toHaveCount(0)
     }
   })
 })
