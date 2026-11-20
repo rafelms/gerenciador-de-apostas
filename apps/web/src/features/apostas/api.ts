@@ -31,8 +31,11 @@ const colunaOrdem = {
 } as const
 
 /** Resumo das apostas com os filtros da lista aplicados (sem ordem nem página). */
-function apostasFiltradas(filtros: FiltrosApostas) {
-  let q = supabase.from('vw_apostas_resumo').select('*')
+export function apostasFiltradas<Colunas extends string = '*'>(
+  filtros: FiltrosApostas,
+  colunas: Colunas = '*' as Colunas,
+) {
+  let q = supabase.from('vw_apostas_resumo').select(colunas)
   if (filtros.modalidade) q = q.eq('modalidade_slug', filtros.modalidade)
   if (filtros.tipo) q = q.eq('tipo', filtros.tipo)
   if (filtros.status) q = q.eq('status', filtros.status)

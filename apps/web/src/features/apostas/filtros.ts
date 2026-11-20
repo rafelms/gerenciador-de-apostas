@@ -1,3 +1,5 @@
+import { formatarData } from '@/lib/formatadores'
+import { rotulosStatus } from '@/lib/status'
 import type { FiltrosApostas, OrigemAposta, StatusAposta, TipoAposta } from './api'
 
 // Filtros da lista vivem na URL (?modalidade=megasena&tipo=bolao…): sobrevivem ao
@@ -54,3 +56,35 @@ export const rotulosOrigem: Record<OrigemAposta, string> = {
   pdf: 'PDF',
 }
 export { ORIGENS, STATUS, TIPOS }
+
+export interface FiltroAtivo {
+  rotulo: string
+  /** O que aplicar para tirar só este filtro. */
+  remover: Partial<FiltrosApostas>
+}
+
+/** Filtros em uso, com rótulo legível (chips da lista e resumo da exportação). */
+export function filtrosAtivos(filtros: FiltrosApostas, nomeModalidade?: string): FiltroAtivo[] {
+  const ativos: FiltroAtivo[] = []
+  if (filtros.modalidade)
+    ativos.push({
+      rotulo: nomeModalidade ?? filtros.modalidade,
+      remover: { modalidade: undefined },
+    })
+  if (filtros.tipo) ativos.push({ rotulo: rotulosTipo[filtros.tipo], remover: { tipo: undefined } })
+  if (filtros.status)
+    ativos.push({ rotulo: rotulosStatus[filtros.status], remover: { status: undefined } })
+  if (filtros.origem)
+    ativos.push({
+      rotulo: `Origem: ${rotulosOrigem[filtros.origem]}`,
+      remover: { origem: undefined },
+    })
+  if (filtros.de)
+    ativos.push({ rotulo: `De ${formatarData(filtros.de)}`, remover: { de: undefined } })
+  if (filtros.ate)
+    ativos.push({ rotulo: `Até ${formatarData(filtros.ate)}`, remover: { ate: undefined } })
+  if (filtros.premiadas) ativos.push({ rotulo: 'Só premiadas', remover: { premiadas: undefined } })
+  if (filtros.concurso)
+    ativos.push({ rotulo: `Concurso ${filtros.concurso}`, remover: { concurso: undefined } })
+  return ativos
+}

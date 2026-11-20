@@ -17,13 +17,6 @@ export const AnalisadorPage = () => (
     descricao="Estatísticas descritivas dos seus jogos."
   />
 )
-export const ExportarPage = () => (
-  <PaginaEmBreve
-    titulo="Exportar"
-    fase={3}
-    descricao="Exportação das suas apostas para Excel ou CSV."
-  />
-)
 export const OrcamentoPage = () => (
   <PaginaEmBreve
     titulo="Orçamento"

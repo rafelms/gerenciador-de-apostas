@@ -94,7 +94,9 @@ export const router = createBrowserRouter([
               },
               {
                 path: '/exportar',
-                lazy: async () => ({ Component: (await futuras()).ExportarPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/exportacao/exportar-page')).ExportarPage,
+                }),
               },
               {
                 path: '/resultados',
