@@ -1,12 +1,13 @@
 name: Deploy Supabase
 
 # Banco e Edge Functions de produção (seção 13.4). O front vai pela integração Git da Vercel.
+# Só publica depois que o CI da `main` termina verde: um merge que quebrou o CI não chega à
+# produção. Também pode ser disparado à mão.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'supabase/**'
-      - 'packages/shared/src/**'
   workflow_dispatch:
 
 concurrency:
@@ -15,18 +16,35 @@ concurrency:
 
 jobs:
   deploy:
+    # Só o CI de um push na própria `main` (nunca de PR, nem de fork) e só se passou.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: producao
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@v7
         with:
-          version: latest
-      - run: node scripts/sync-shared.mjs --check
+          # O commit que o CI aprovou (no disparo manual, a ponta da main).
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: supabase/setup-cli@v3
+        with:
+          # A mesma versão do devDependency (package.json), para o deploy não divergir do CI.
+          version: 2.121.0
+
+      - name: Cópia do shared para as Edge Functions está em dia
+        run: node scripts/sync-shared.mjs --check
+
       - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
-      - run: supabase db push
-      - run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Migrations
+        run: supabase db push
+      - name: Edge Functions
+        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"

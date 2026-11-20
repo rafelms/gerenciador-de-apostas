@@ -86,5 +86,21 @@ for (const { slug, numeros } of modalidades) {
 
 // Falha de uma modalidade não derruba o job (fica no sync_logs); só erro geral falha.
 const sync = await chamarFunction('sync-resultados', { respostasCaixa }, 300_000)
-console.log(await sync.text())
+const texto = await sync.text()
+console.log(texto)
 if (sync.status !== 200) process.exit(1)
+
+// Um job verde pode esconder modalidades com erro: viram avisos no resumo do job e, se
+// TODAS falharem, o job falha (e o GitHub avisa por e-mail).
+let resumo = []
+try {
+  resumo = JSON.parse(texto).modalidades ?? []
+} catch {
+  // resposta fora do formato esperado: o log acima já mostra o conteúdo
+}
+const comErro = resumo.filter((m) => m.erro)
+for (const m of comErro) console.log(`::warning title=${m.slug}::${m.erro}`)
+if (resumo.length > 0 && comErro.length === resumo.length) {
+  console.error('Nenhuma modalidade foi sincronizada.')
+  process.exit(1)
+}
