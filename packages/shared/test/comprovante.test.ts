@@ -8,6 +8,7 @@ import {
   comprovanteParaAposta,
   normalizarTextoComprovante,
   parseComprovante,
+  validarComprovante,
 } from '../src/parsers/comprovante-pdf.ts'
 
 const FIXTURE = readFileSync(new URL('./fixtures/bolao-megasena-01.txt', import.meta.url), 'utf8')
@@ -187,6 +188,21 @@ describe('parseComprovante (Apêndice A)', () => {
         'Valor total da\n  aposta:  R$ 1,00\nValor tarifa de\nservico: R$ 0,10',
       ),
     ).toBe('Valor total da aposta: R$ 1,00\nValor tarifa de servico: R$ 0,10')
+  })
+})
+
+describe('validarComprovante', () => {
+  it('revalida depois de uma correção na revisão', async () => {
+    const r = await parseComprovante(FIXTURE.replace('R$ 11,93', 'R$ 12,00'))
+    expect(r.erros).toHaveLength(1)
+    const { avisos: _avisos, erros: _erros, ...dados } = r
+    expect(validarComprovante({ ...dados, valorTotalCentavos: 1193 })).toEqual({
+      avisos: [],
+      erros: [],
+    })
+    expect(validarComprovante({ ...dados, modalidadeSlug: '' }).erros[0]).toBe(
+      'Não encontrei a modalidade no comprovante.',
+    )
   })
 })
 
