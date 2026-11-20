@@ -17,7 +17,7 @@ import { navMais, navPrincipal } from './navegacao'
 const classeItem =
   'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors duration-150'
 
-/** Bottom nav do mobile (< lg): Início, Apostas, [+] Nova, Calendário, Mais. */
+/** Bottom nav do mobile (< lg): Início, Apostas, [+] Nova, Resultados, Mais. */
 export function BarraInferior() {
   const { ehAdmin } = useAuth()
   const [maisAberto, setMaisAberto] = useState(false)
