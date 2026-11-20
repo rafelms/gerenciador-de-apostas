@@ -122,7 +122,9 @@ export const router = createBrowserRouter([
               },
               {
                 path: '/orcamento',
-                lazy: async () => ({ Component: (await futuras()).OrcamentoPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/orcamento/orcamento-page')).OrcamentoPage,
+                }),
               },
               {
                 path: '/notificacoes',

@@ -22,11 +22,14 @@ import { ModalidadeChip } from '@/components/modalidade-chip'
 import { MoneyText } from '@/components/money-text'
 import { SelectNativo } from '@/components/select-nativo'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/auth-provider'
 import { ApostaCard } from '@/features/apostas/aposta-card'
+import { rotuloMes } from '@/features/calendario/calendario'
 import { useModalidades } from '@/features/modalidades/use-modalidades'
+import { ResumoOrcamento } from '@/features/orcamento/barra-orcamento'
 import { hojeIso } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import {
@@ -227,6 +230,18 @@ export function DashboardPage() {
           </>
         )}
       </section>
+
+      <Card className="mb-8 gap-3 p-4" role="region" aria-labelledby="titulo-orcamento">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="titulo-orcamento" className="text-base font-semibold first-letter:uppercase">
+            Orçamento de {rotuloMes(hoje.slice(0, 7))}
+          </h2>
+          <Button asChild variant="link" className="h-auto px-0">
+            <Link to="/orcamento">Ajustar</Link>
+          </Button>
+        </div>
+        <ResumoOrcamento mes={hoje.slice(0, 7)} convite />
+      </Card>
 
       {dados.data && totais && totais.qtdApostas > 0 && (
         <Graficos dados={dados.data} intervalo={intervalo} hoje={hoje} />

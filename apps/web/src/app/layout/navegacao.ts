@@ -43,7 +43,7 @@ const todosMais: ItemNav[] = [
   { rota: '/importar', rotulo: 'Importar', icone: FileUp },
   { rota: '/exportar', rotulo: 'Exportar', icone: FileDown },
   { rota: '/simulador-rateio', rotulo: 'Simular divisão', icone: Scale },
-  { rota: '/orcamento', rotulo: 'Orçamento', icone: PiggyBank, emBreve: 4 },
+  { rota: '/orcamento', rotulo: 'Orçamento', icone: PiggyBank },
   { rota: '/notificacoes', rotulo: 'Notificações', icone: Bell },
   { rota: '/configuracoes', rotulo: 'Configurações', icone: Settings },
   { rota: '/admin', rotulo: 'Admin', icone: ShieldCheck, admin: true },
