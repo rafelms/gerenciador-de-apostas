@@ -164,6 +164,12 @@ export const router = createBrowserRouter([
                     }),
                   },
                   {
+                    path: 'metricas',
+                    lazy: async () => ({
+                      Component: (await import('@/features/admin/metricas-page')).AdminMetricasPage,
+                    }),
+                  },
+                  {
                     path: 'configuracoes',
                     lazy: async () => ({
                       Component: (await import('@/features/admin/configuracoes-sistema-page'))

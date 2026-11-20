@@ -8,6 +8,8 @@ export const chavesAdmin = {
   usuarios: ['admin', 'usuarios'] as const,
   syncLogs: ['admin', 'sync-logs'] as const,
   configuracoes: ['admin', 'configuracoes'] as const,
+  metricas: (inicio: string | null, fim: string | null) =>
+    ['admin', 'metricas', inicio, fim] as const,
   concurso: (modalidadeId: number, numero: number) =>
     ['admin', 'concurso', modalidadeId, numero] as const,
 }
@@ -138,4 +140,48 @@ export async function adicionarPreco(
         : 'Não foi possível salvar o preço.',
     )
   }
+}
+
+export interface MetricaModalidade {
+  slug: string
+  nome: string
+  cor: string | null
+  qtd: number
+  gasto: number
+  recuperado: number
+}
+
+export interface MetricaUsuario {
+  userId: string
+  nome: string
+  qtd: number
+  gasto: number
+  recuperado: number
+  saldo: number
+  roi: number | null
+  ultimaAposta: string | null
+  porModalidade: MetricaModalidade[]
+}
+
+/** Métricas agregadas por usuário (seção 8.3): nunca dezenas, observações ou participantes. */
+export async function carregarMetricas(
+  inicio: string | null,
+  fim: string | null,
+): Promise<MetricaUsuario[]> {
+  const { data, error } = await supabase.rpc('fn_admin_metricas', {
+    ...(inicio && { p_inicio: inicio }),
+    ...(fim && { p_fim: fim }),
+  })
+  if (error) throw error
+  return data.map((m) => ({
+    userId: m.user_id,
+    nome: m.nome,
+    qtd: m.qtd_apostas,
+    gasto: m.gasto_centavos,
+    recuperado: m.recuperado_centavos,
+    saldo: m.saldo_centavos,
+    roi: m.roi,
+    ultimaAposta: m.ultima_aposta,
+    porModalidade: (m.por_modalidade ?? []) as unknown as MetricaModalidade[],
+  }))
 }

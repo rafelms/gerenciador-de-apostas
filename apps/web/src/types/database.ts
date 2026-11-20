@@ -486,6 +486,11 @@ isOneToOne: false
               "ativo": boolean,"created_at": string,"email": string,"id": string,"nome": string,"papel": Database["public"]['Enums']["papel_usuario"],"ultimo_acesso": string
             }[]
                            },
+"fn_admin_metricas":
+{ Args: { "p_fim"?: string,"p_inicio"?: string }; Returns: {
+              "gasto_centavos": number,"nome": string,"por_modalidade": Json,"qtd_apostas": number,"recuperado_centavos": number,"roi": number,"saldo_centavos": number,"ultima_aposta": string,"user_id": string
+            }[]
+                           },
 "fn_calendario":
 { Args: { "p_fim": string,"p_inicio": string }; Returns: {
               "aposta_id": string,"concurso": number,"data": string,"estimada": boolean,"modalidade_cor": string,"modalidade_nome": string,"modalidade_slug": string,"premio_id": string,"qtd": number,"sorteado": boolean,"tipo": string,"valor_centavos": number
