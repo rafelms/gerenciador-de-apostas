@@ -41,7 +41,7 @@ export const navPrincipal: ItemNav[] = [
 const todosMais: ItemNav[] = [
   { rota: '/calendario', rotulo: 'Calendário', icone: CalendarDays, emBreve: 4 },
   { rota: '/analisador', rotulo: 'Analisador', icone: Microscope, emBreve: 5 },
-  { rota: '/importar', rotulo: 'Importar', icone: FileUp, emBreve: 3 },
+  { rota: '/importar', rotulo: 'Importar', icone: FileUp },
   { rota: '/exportar', rotulo: 'Exportar', icone: FileDown, emBreve: 3 },
   { rota: '/simulador-rateio', rotulo: 'Simular divisão', icone: Scale },
   { rota: '/orcamento', rotulo: 'Orçamento', icone: PiggyBank, emBreve: 4 },

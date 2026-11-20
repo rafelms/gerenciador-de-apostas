@@ -4,11 +4,13 @@
 //                                   (depois de criar/editar a aposta, informar prêmio à mão ou
 //                                   tocar em "Conferir agora"). Antes, busca na API da CAIXA os
 //                                   resultados que faltam, sem esperar o cron.
+//   usuário:      { importacao_id } → confere as apostas de uma importação PRÓPRIA nos concursos
+//                                   que já têm resultado no banco (sem consultar a API).
 // Idempotente: pode ser chamada quantas vezes for preciso.
 import { z } from 'zod'
 
 import { obterChamador, segredoConfere, tokenDoHeader } from '../_shared/auth.ts'
-import { conferirAposta, conferirConcurso } from '../_shared/conferir.ts'
+import { conferirAposta, conferirConcurso, conferirImportacao } from '../_shared/conferir.ts'
 import { responderPreflight } from '../_shared/cors.ts'
 import { erro, json } from '../_shared/respostas.ts'
 import { buscarResultadosDaAposta } from '../_shared/sincronizar.ts'
@@ -16,6 +18,7 @@ import { supabaseAdmin } from '../_shared/supabase-admin.ts'
 
 const porConcurso = z.object({ concurso_id: z.number().int().positive() })
 const porAposta = z.object({ aposta_id: z.uuid() })
+const porImportacao = z.object({ importacao_id: z.uuid() })
 
 /**
  * O formulário confere em segundo plano a cada aposta salva; 30/min cobre quem registra
@@ -51,6 +54,16 @@ Deno.serve(async (req) => {
       p_limite: LIMITE_POR_MINUTO,
     })
     if (!dentroDoLimite) return erro(req, 429, 'Muitas conferências seguidas. Aguarde um minuto.')
+
+    const lote = porImportacao.safeParse(corpo)
+    if (lote.success) {
+      // A RPC filtra pelo dono: importação de outro usuário não confere nada.
+      return json(
+        req,
+        await conferirImportacao(supabaseAdmin, lote.data.importacao_id, chamador.id),
+      )
+    }
+
     const entrada = porAposta.safeParse(corpo)
     if (!entrada.success) return erro(req, 400, 'Dados inválidos.')
 

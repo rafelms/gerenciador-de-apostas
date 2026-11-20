@@ -88,7 +88,9 @@ export const router = createBrowserRouter([
               },
               {
                 path: '/importar',
-                lazy: async () => ({ Component: (await futuras()).ImportarPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/importacao/importar-page')).ImportarPage,
+                }),
               },
               {
                 path: '/exportar',

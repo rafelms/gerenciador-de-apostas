@@ -4,7 +4,7 @@
 import { assert, assertEquals, assertRejects } from '@std/assert'
 import { createClient } from '@supabase/supabase-js'
 
-import { conferirAposta, conferirConcurso } from '../_shared/conferir.ts'
+import { conferirAposta, conferirConcurso, conferirImportacao } from '../_shared/conferir.ts'
 import {
   buscarJson,
   buscarResultadosDaAposta,
@@ -675,6 +675,81 @@ Deno.test(
       assertEquals(divisoes.length, 2)
       // A divisão é do líquido da aposta inteira entre os 2 participantes (pesos 1/1).
       assert(divisoes.every((d) => d.liquido_centavos > 0))
+    } finally {
+      await limpar(userId, megaId)
+    }
+  },
+)
+
+Deno.test(
+  'conferirImportacao: confere o lote nos concursos já sorteados, só do dono',
+  opcoes,
+  async () => {
+    const { userId, megaId } = await criarCenario()
+    try {
+      // O concurso ANTERIOR já está no banco quando a planilha é importada.
+      await sincronizar(
+        { db, fetch: apiSimulada(), esperar: semEspera, urlApi: 'https://api.test' },
+        'cron',
+      )
+      const { data: imp } = await db
+        .from('importacoes')
+        .insert({ user_id: userId, origem: 'excel', qtd_apostas: 2 })
+        .select('id')
+        .single()
+      const { data: apostas } = await db
+        .from('apostas')
+        .insert(
+          [ANTERIOR, ULTIMO + 5].map((concurso) => ({
+            user_id: userId,
+            modalidade_id: megaId,
+            tipo: 'simples' as const,
+            origem: 'excel' as const,
+            concurso_inicial: concurso,
+            data_aposta: '2026-10-14',
+            valor_pago_centavos: 600,
+            importacao_id: imp!.id,
+          })),
+        )
+        .select('id, concurso_inicial')
+      for (const a of apostas!) {
+        await db.from('aposta_jogos').insert({
+          aposta_id: a.id,
+          user_id: userId,
+          ordem: 1,
+          dezenas: [3, 17, 22, 31, 40, 58],
+        })
+      }
+
+      // Outro usuário não confere a importação alheia.
+      const outro = await db.auth.admin.createUser({
+        email: `outro-${crypto.randomUUID()}@teste.local`,
+        password: 'SenhaTeste123',
+        email_confirm: true,
+      })
+      try {
+        assertEquals(await conferirImportacao(db, imp!.id, outro.data.user!.id), {
+          concursosConferidos: 0,
+          restantes: 0,
+        })
+      } finally {
+        await db.auth.admin.deleteUser(outro.data.user!.id)
+      }
+
+      // Só o concurso já sorteado entra; o futuro fica para a sincronização.
+      assertEquals(await conferirImportacao(db, imp!.id, userId), {
+        concursosConferidos: 1,
+        restantes: 0,
+      })
+      const { data: status } = await db
+        .from('apostas')
+        .select('concurso_inicial, status')
+        .eq('importacao_id', imp!.id)
+        .order('concurso_inicial')
+      assertEquals(status, [
+        { concurso_inicial: ANTERIOR, status: 'premiada' },
+        { concurso_inicial: ULTIMO + 5, status: 'aguardando' },
+      ])
     } finally {
       await limpar(userId, megaId)
     }

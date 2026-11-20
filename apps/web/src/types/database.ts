@@ -457,6 +457,11 @@ isOneToOne: false
               "ativo": boolean,"created_at": string,"email": string,"id": string,"nome": string,"papel": Database["public"]['Enums']["papel_usuario"],"ultimo_acesso": string
             }[]
                            },
+"fn_concursos_sorteados_da_importacao":
+{ Args: { "p_importacao_id": string,"p_user_id": string }; Returns: {
+              "concurso_id": number
+            }[]
+                           },
 "fn_limpar_conferencia":
 { Args: { "p_aposta_id": string }; Returns: undefined
                            },

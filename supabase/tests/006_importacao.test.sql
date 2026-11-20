@@ -45,7 +45,7 @@ grant execute on all functions in schema tests to authenticated;
 select tests.criar_usuario('a@teste.local', 'Usuária A') as a_id \gset
 select tests.criar_usuario('b@teste.local', 'Usuário B') as b_id \gset
 
-select plan(19);
+select plan(20);
 
 -- ===========================================================================
 -- Lote válido
@@ -126,6 +126,11 @@ select is((select count(*)::int from public.importacoes), 0, 'B não vê as impo
 delete from public.importacoes;
 select tests.autenticar(:'a_id');
 select is((select count(*)::int from public.importacoes), 2, 'B não apaga as importações de A');
+
+select throws_ok(
+  format($$select * from public.fn_concursos_sorteados_da_importacao(%L, %L)$$,
+    (:'r'::jsonb)->>'importacao_id', :'a_id'),
+  '42501', null, 'só a Edge Function (service role) lista os concursos da importação');
 
 select * from finish();
 rollback;
