@@ -1071,10 +1071,10 @@ Cores-base do produto: **`#282B4A`** (azul-marinho) e **`#EEEBDA`** (creme).
 | F4.5 | `fn_admin_metricas` + tela de métricas |
 
 **Aceite F4:**
-- [ ] Os totais do dashboard batem com a soma manual da lista filtrada (teste e2e com dados semeados).
-- [ ] Admin vê agregados de todos; **teste pgTAP prova que o admin não lê `aposta_jogos` de outro usuário**.
-- [ ] Membro chamando `fn_admin_metricas` recebe erro 42501.
-- [ ] Orçamento de R$ 100 → aposta que leva a R$ 85 gera 1 notificação de 80%; nova aposta até R$ 90 não gera outra.
+- [x] Os totais do dashboard batem com a soma manual da lista filtrada (teste e2e com dados semeados).
+- [x] Admin vê agregados de todos; **teste pgTAP prova que o admin não lê `aposta_jogos` de outro usuário**.
+- [x] Membro chamando `fn_admin_metricas` recebe erro 42501.
+- [x] Orçamento de R$ 100 → aposta que leva a R$ 85 gera 1 notificação de 80%; nova aposta até R$ 90 não gera outra.
 
 ### FASE 5 — Analisador, anexos, PWA e acabamento
 | ID | Tarefa |
