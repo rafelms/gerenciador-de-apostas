@@ -11,6 +11,7 @@ export const chaves = {
     ['apostas', 'dashboard', inicio, fim, modalidadeId] as const,
   // Sob 'apostas': invalidar as apostas também refaz a conferência exibida.
   conferencia: (apostaId: string) => ['apostas', 'conferencia', apostaId] as const,
+  calendario: (mes: string) => ['apostas', 'calendario', mes] as const,
   configPremio: ['configuracoes', 'premio'] as const,
   notificacoes: ['notificacoes'] as const,
   resultados: ['concursos', 'resultados'] as const,

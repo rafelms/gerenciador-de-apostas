@@ -185,3 +185,57 @@ test.describe('Aceite F4 (dashboard)', () => {
     await expect(page.locator('.recharts-surface')).toHaveCount(0)
   })
 })
+
+test.describe('Calendário (F4.3)', () => {
+  test('apostas, sorteios, prêmio e prazo no mês certo, sem rolagem lateral', async ({
+    page,
+  }, info) => {
+    const { id, email } = await criarUsuario('membro')
+    await semearApostas(email, id)
+    await entrarPelaTela(page, email)
+    await expect(page).toHaveURL('/')
+    await page.goto('/calendario?mes=2026-10')
+    await expect(page.getByRole('heading', { name: 'outubro de 2026' })).toBeVisible()
+
+    if (info.project.name === 'desktop') {
+      // Grade: o dia 11 tem prêmio e sorteio; tocar abre a lista do dia.
+      await page.getByRole('button', { name: /^domingo, 11 de outubro: / }).click()
+      const painel = page.getByRole('region', { name: 'domingo, 11 de outubro' })
+      await expect(painel.getByRole('link', { name: /Prêmio a resgatar/ })).toContainText(
+        'R$ 1.000,00',
+      )
+      await expect(painel.getByRole('link', { name: /Sorteio/ })).toContainText(
+        '1 aposta · sorteado',
+      )
+      await expect(
+        page.getByRole('button', { name: /^sábado, 10 de outubro: 1 aposta feita$/ }),
+      ).toBeVisible()
+    } else {
+      const semana = page.getByRole('region', { name: 'Semana de 11 a 17 de out.' })
+      await expect(semana.getByRole('link', { name: /Prêmio a resgatar/ })).toContainText(
+        'R$ 1.000,00',
+      )
+      await expect(semana.getByRole('link', { name: /Sorteio.*3070/ })).toContainText(
+        // Data prevista (data_proximo do 3069) já passou e o resultado não saiu.
+        'aguardando resultado',
+      )
+      await expect(page.getByRole('region', { name: 'Semana de 4 a 10 de out.' })).toContainText(
+        'Aposta feita',
+      )
+    }
+    await semRolagemHorizontal(page)
+    await page.screenshot({
+      path: info.outputPath(`calendario-${info.project.name}.png`),
+      fullPage: true,
+    })
+
+    // Navegação de mês pela URL; o fim do prazo de resgate cai em janeiro.
+    await page.getByRole('button', { name: 'Mês anterior' }).click()
+    await expect(page).toHaveURL('/calendario?mes=2026-09')
+    await expect(page.getByRole('heading', { name: 'setembro de 2026' })).toBeVisible()
+    await page.goto('/calendario?mes=2027-01')
+    await expect(
+      page.getByRole('link', { name: /Fim do prazo de resgate/ }).filter({ visible: true }),
+    ).toContainText('R$ 1.000,00')
+  })
+})
