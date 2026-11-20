@@ -46,13 +46,15 @@ jobs:
       - run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Dump (papéis, schema e dados)
+        # Roda na raiz do repositório: o `supabase link` grava o projeto ligado em
+        # supabase/.temp/ daqui. Os arquivos vão para a pasta temporária do runner.
         run: |
-          mkdir -p "$RUNNER_TEMP/backup"
-          cd "$RUNNER_TEMP/backup"
-          supabase db dump --linked --role-only -f roles.sql
-          supabase db dump --linked -f schema.sql
-          supabase db dump --linked --data-only --use-copy -f data.sql
-          ls -l
+          destino="$RUNNER_TEMP/backup"
+          mkdir -p "$destino"
+          supabase db dump --linked --role-only -f "$destino/roles.sql"
+          supabase db dump --linked -f "$destino/schema.sql"
+          supabase db dump --linked --data-only --use-copy -f "$destino/data.sql"
+          ls -l "$destino"
 
       - name: Compactar e cifrar
         id: cifrar
