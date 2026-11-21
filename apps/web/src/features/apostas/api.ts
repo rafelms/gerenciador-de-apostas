@@ -1,5 +1,6 @@
 import { apostaParaRpc, type ApostaInput } from '@shared/schemas/aposta.ts'
 
+import { BUCKET as BUCKET_COMPROVANTES } from '@/features/anexos/api'
 import { supabase } from '@/lib/supabase'
 import type { Enums, Tables } from '@/types/database'
 import type { ApostaParaCopiar } from './texto-copia'
@@ -129,8 +130,12 @@ export async function salvarAposta(aposta: ApostaInput, id?: string) {
 }
 
 export async function excluirApostas(ids: string[]) {
+  // O cascade apaga os registros de anexos, mas não os arquivos do storage.
+  const { data: anexos } = await supabase.from('anexos').select('storage_path').in('aposta_id', ids)
   const { error } = await supabase.from('apostas').delete().in('id', ids)
   if (error) throw new Error('Não foi possível excluir. Tente de novo.')
+  const caminhos = (anexos ?? []).map((a) => a.storage_path)
+  if (caminhos.length > 0) await supabase.storage.from(BUCKET_COMPROVANTES).remove(caminhos)
 }
 
 /** Último concurso conhecido da modalidade (para sugerir o próximo). */

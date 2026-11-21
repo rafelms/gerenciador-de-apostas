@@ -38,6 +38,7 @@ import {
 import { formatarData, formatarDataHora } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
+import { AnexosCard } from '@/features/anexos/anexos-card'
 import { carregarAposta, excluirApostas, type ApostaCompleta } from './api'
 import { InformarResultado } from './detalhe/informar-resultado'
 import { PremioCard } from './detalhe/premio-card'
@@ -694,6 +695,7 @@ export function ApostaDetalhePage() {
               )}
             </CardContent>
           </Card>
+          <AnexosCard apostaId={a.id} />
           <LinhaDoTempo aposta={a} concursos={concursos} />
         </div>
       </div>
