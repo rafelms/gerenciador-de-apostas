@@ -54,16 +54,16 @@ Independentes: Cron de resultados (cron-resultados.yml, 4×/dia) e backup mensal
 
 ### 2.4 Versões de ferramentas
 
-| Ferramenta     | Como é fixada                                                                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pnpm           | `packageManager` no `package.json` raiz; o `pnpm/action-setup` lê dali                                                                            |
-| Node           | `engines.node >= 22`; o CI usa 22, e o desenvolvimento local, 24                                                                                  |
-| Dependências   | `pnpm-lock.yaml` versionado; o CI instala com `--frozen-lockfile`                                                                                 |
-| Supabase CLI   | devDependency do projeto (CI e local); os workflows de deploy e backup fixam a **mesma** versão no `supabase/setup-cli` (atualize os três juntos) |
-| Deno           | major 2 (CI: `v2.x`; `deno_version = 2` no `config.toml`)                                                                                         |
-| GitHub Actions | fixadas por major, em versões que rodam em Node 24 (`checkout@v7`, `setup-node@v7`, `pnpm/action-setup@v6`, `setup-cli@v3`…)                      |
+| Ferramenta     | Como é fixada                                                                                                                                                                                                                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pnpm           | `packageManager` no `package.json` raiz; o `pnpm/action-setup` lê dali                                                                                                                                                                                                                                                     |
+| Node           | `engines.node >= 22`; o CI usa 22, e o desenvolvimento local, 24                                                                                                                                                                                                                                                           |
+| Dependências   | `pnpm-lock.yaml` versionado; o CI instala com `--frozen-lockfile`                                                                                                                                                                                                                                                          |
+| Supabase CLI   | devDependency do projeto (CI e local); os workflows de deploy e backup fixam a **mesma** versão no `supabase/setup-cli` (atualize os três juntos)                                                                                                                                                                          |
+| Deno           | major 2 (CI: `v2.x`; `deno_version = 2` no `config.toml`)                                                                                                                                                                                                                                                                  |
+| GitHub Actions | fixadas pelo **SHA do commit** da release estável, com a versão em comentário (`actions/checkout@3d3c42e… # v7.0.1`): tags, até as completas, podem ser movidas. Versões em 21/11/2026: checkout v7.0.1, setup-node v7.1.0, pnpm/action-setup v6.1.1, setup-deno v2.0.5, upload-artifact v7.0.2, supabase/setup-cli v3.2.0 |
 
-Ao atualizar uma dessas versões, faça isso em um commit `chore:` próprio e confira se o CI continua verde.
+Ao atualizar uma dessas versões, faça isso em um commit `chore:` próprio e confira se o CI continua verde. Para uma action: escolha a release estável mais recente (sem issue aberta de regressão), resolva o SHA da tag (`gh api repos/<dono>/<action>/git/ref/tags/<tag>`; se o objeto for `tag`, siga para o commit) e troque o SHA e o comentário em **todos** os workflows.
 
 ---
 
@@ -71,17 +71,21 @@ Ao atualizar uma dessas versões, faça isso em um commit `chore:` próprio e co
 
 ### 3.1 `ci.yml`: integração contínua
 
-Roda em todo PR e em todo push na `main`. Uma nova execução no mesmo ref cancela a anterior. É um job único chamado **`ci`**, que é o nome exigido pelo ruleset: **não renomeie o job** sem atualizar o ruleset.
+Roda em todo PR e em todo push na `main`. Uma nova execução no mesmo ref cancela a anterior. Três jobs rodam **em paralelo** (~5 min no total; antes, um job só levava 8–10 min, 5–6,5 min deles de E2E contra o `vite dev`):
 
-Etapas, em ordem (uma falha interrompe as seguintes):
+- **`verificacoes`:** etapas 1 a 6 abaixo;
+- **`e2e` (mobile)** e **`e2e` (desktop)**: etapa 7, um viewport por job, cada um com o seu Supabase local;
+- **`ci`:** espera os outros e só passa se todos passaram. É o nome exigido pelo ruleset: **não renomeie esse job** sem atualizar o ruleset.
+
+Etapas (dentro de cada job, uma falha interrompe as seguintes):
 
 1. **Dependências:** `pnpm install --frozen-lockfile`.
 2. **Qualidade estática:** `pnpm lint`, `pnpm format:check` e `pnpm typecheck`. Em seguida, `pnpm sync:shared:check` confere se a cópia de `packages/shared/src` em `supabase/functions/_shared/domain/` está em dia, e `deno check` valida as Edge Functions e seus testes.
 3. **Testes unitários:** Vitest do `packages/shared`, com cobertura mínima de 90% das linhas, e do `apps/web`.
-4. **Banco:** sobe o Supabase local e roda `supabase db reset` (migrations + seed), os testes pgTAP (`supabase test db`) e o lint do schema. Depois vêm os testes Deno das Edge Functions, com a API da CAIXA **simulada**.
+4. **Banco:** sobe o Supabase local (num runner novo, o `supabase start` já aplica as migrations e o seed), os testes pgTAP (`supabase test db`) e o lint do schema. Depois vêm os testes Deno das Edge Functions, com a API da CAIXA **simulada**.
 5. **Tipos gerados:** `pnpm gen:types` não pode alterar `apps/web/src/types/database.ts`. Se você mudar o schema, gere e commite os tipos.
 6. **Build:** `pnpm build`, seguido de duas guardas: o bundle inicial precisa ficar abaixo de 250 KB gzip (`scripts/tamanho-bundle.mjs`), e nenhuma chave secreta ou referência ao papel de serviço pode aparecer no `dist`.
-7. **E2E:** Playwright em 360×800 e 1280×800 contra o Supabase local. Em caso de falha, o `test-results` é publicado como artefato por 7 dias.
+7. **E2E:** Playwright em 360×800 e 1280×800 contra o Supabase local e o **build de produção** (`E2E_PREVIEW=1` → `vite preview`), que carrega bem mais rápido que o `vite dev` e testa o que vai para o ar. O service worker fica bloqueado nos testes (`serviceWorkers: 'block'`). Localmente, `pnpm test:e2e` continua usando o `vite dev`; para repetir o CI: `pnpm build` e `E2E_PREVIEW=1 pnpm test:e2e`. Os testes mexem em dados globais (limite de usuários ativos, resultados do admin), por isso rodam com 1 worker por banco. Em caso de falha, o `test-results` de cada viewport é publicado como artefato por 7 dias.
 
 O CI **não usa secrets**. Tudo roda contra o Supabase local, com as chaves públicas de desenvolvimento que o próprio CLI gera. Por isso é seguro rodar o CI em PRs de forks, que ainda assim precisam de aprovação manual.
 
