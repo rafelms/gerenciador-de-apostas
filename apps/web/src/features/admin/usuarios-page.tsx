@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/auth-provider'
+import { useTrabalhoNaoSalvo } from '@/lib/atualizacao'
 import { formatarDataHora } from '@/lib/formatadores'
 import {
   chavesAdmin,
@@ -43,6 +44,7 @@ function DialogConvite({ desabilitado }: { desabilitado: boolean }) {
     resolver: zodResolver(convidarUsuarioSchema),
     defaultValues: { email: '', nome: '' },
   })
+  useTrabalhoNaoSalvo(form.formState.isDirty)
   const mutacao = useMutation({
     mutationFn: convidarUsuario,
     onSuccess: () => {

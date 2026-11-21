@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useModalidades } from '@/features/modalidades/use-modalidades'
+import { useTrabalhoNaoSalvo } from '@/lib/atualizacao'
 import { chaves } from '@/lib/query-keys'
 import { useDesktop } from '@/lib/use-media-query'
 import { cn } from '@/lib/utils'
@@ -60,6 +61,8 @@ function Formulario({ id, inicial }: { id?: string | undefined; inicial: FormApo
     mode: 'onSubmit',
     reValidateMode: 'onChange',
   })
+  // Versão nova do app espera a aposta ser salva (ou a tela ser deixada) para recarregar.
+  useTrabalhoNaoSalvo(form.formState.isDirty)
   const modalidade = obterModalidade(form.watch('modalidadeSlug'))
   const edicao = !!id
 

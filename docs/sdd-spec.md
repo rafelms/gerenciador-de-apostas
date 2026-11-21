@@ -856,6 +856,8 @@ Ferramenta para os jogos de uma aposta ou para um conjunto colado/digitado. Foco
 ### 11.14 PWA
 - Manifest (nome, ícones, `theme_color #282B4A`, `background_color #F2F2F4`), instalável; `index.html` traz uma abertura estática com a marca (primeiro paint antes do JS).
 - Cache do shell (Workbox, sem os chunks de PDF/planilha); o cache do TanStack Query fica no `localStorage` (só apostas, concursos, modalidades e notificações; nada de token nem URL assinada), por 7 dias, e sai no logout ou na troca de usuário. Offline mostra a última versão em cache **somente leitura** com o aviso "sem conexão".
+- **Versão nova:** o service worker novo assume assim que instala (`skipWaiting` + `clientsClaim`) e a página recarrega sozinha. Se houver dados digitados e não salvos (formulário de aposta, prêmio, configurações, convite, importação em revisão), não recarrega: mostra "Há uma versão nova do LotoGestor" com "Atualizar agora" e recarrega quando o usuário salvar ou sair da tela (`src/lib/atualizacao.ts`). O app procura versão nova ao voltar para o primeiro plano e a cada 30 min. Os dados em cache guardam só valores serializáveis: o que tem funções (ex.: a `regra` das modalidades) entra no `select`.
+- Ao sair pelo botão "Sair", o login seguinte começa no Início, e não na última tela de quem usou o aparelho antes.
 - (Opcional) Web Share Target para receber PDF compartilhado do app da CAIXA.
 
 ---

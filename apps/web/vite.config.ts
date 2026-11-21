@@ -44,6 +44,11 @@ export default defineConfig({
         globIgnores: ['**/xlsx-*.js', '**/pdf-*.js', '**/*-{cyrillic,greek,vietnamese}*.woff2'],
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
+        // Com injectRegister: false o plugin não liga estes dois sozinho: sem eles a versão
+        // nova ficava "esperando" até fechar todas as abas. A recarga da página é decidida
+        // em src/lib/atualizacao.ts (não recarrega no meio de um formulário).
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
