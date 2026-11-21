@@ -469,16 +469,7 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "aal2":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
-"eh_admin":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
-"eh_ativo":
-{ Args: Record<PropertyKey, never>; Returns: boolean
-                           },
-"faixa_maxima":
+            "faixa_maxima":
 { Args: { "p_faixas": Json }; Returns: number
                            },
 "fn_admin_listar_usuarios":

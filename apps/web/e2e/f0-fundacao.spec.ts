@@ -220,15 +220,14 @@ test.describe('Layout responsivo', () => {
       const mais = page.getByRole('dialog', { name: 'Mais opções' })
       await expect(mais).toBeVisible()
       await expect(mais.getByRole('link', { name: 'Resultados' })).toBeVisible()
-      // Telas de fases futuras ficam fora do menu.
-      await expect(mais.getByRole('link', { name: 'Analisador' })).toHaveCount(0)
+      await expect(mais.getByRole('link', { name: 'Analisador' })).toBeVisible()
       await mais.getByRole('link', { name: 'Simular divisão' }).click()
       await expect(page).toHaveURL('/simulador-rateio')
     } else {
       const lateral = page.locator('aside')
       await expect(lateral.getByRole('link', { name: 'Resultados' })).toBeVisible()
       await expect(lateral.getByRole('link', { name: 'Calendário' })).toBeVisible()
-      await expect(lateral.getByRole('link', { name: 'Analisador' })).toHaveCount(0)
+      await expect(lateral.getByRole('link', { name: 'Analisador' })).toBeVisible()
     }
   })
 })

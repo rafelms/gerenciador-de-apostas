@@ -119,9 +119,13 @@ test.describe('Aceite F2', () => {
     const telaAdmin = await contextoAdmin.newPage()
     await entrarComoAdminComMfa(telaAdmin)
     await telaAdmin.goto('/admin/resultados')
-    await telaAdmin.getByLabel('Modalidade').selectOption('quina')
-    await telaAdmin.getByLabel('Concurso').fill(String(QUINA_MANUAL))
-    await telaAdmin.getByLabel('Data do sorteio').fill('2026-10-20')
+    // A tela também tem o card do histórico (F5.2), com outros campos de mesmo nome.
+    const manual = telaAdmin
+      .locator('[data-slot="card"]')
+      .filter({ has: telaAdmin.getByRole('heading', { name: 'Lançar ou corrigir resultado' }) })
+    await manual.getByLabel('Modalidade').selectOption('quina')
+    await manual.getByLabel('Concurso').fill(String(QUINA_MANUAL))
+    await manual.getByLabel('Data do sorteio').fill('2026-10-20')
     const volante = telaAdmin.getByRole('group', { name: 'Dezenas sorteadas' })
     for (const d of [8, 19, 33, 57, 71]) {
       await volante
