@@ -30,12 +30,12 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # O commit que o CI aprovou (no disparo manual, a ponta da main).
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - uses: supabase/setup-cli@v3
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
           # A mesma versão do devDependency (package.json), para o deploy não divergir do CI.
           version: 2.121.0

@@ -9,16 +9,23 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Três jobs em paralelo: verificações (lint, unitários, banco, build) e o E2E dividido entre
+# os dois viewports, cada um com o seu Supabase local. Antes era um job só, em série
+# (~8–10 min, dos quais 5–6,5 min de E2E contra o `vite dev`). O job `ci` no fim é o
+# status check exigido pela proteção da main (.github/rulesets/protecao-main.json).
+#
+# Actions fixadas pelo SHA do commit da versão (tags podem ser movidas); a versão fica no
+# comentário. Para atualizar: escolha a release estável, resolva o SHA da tag e troque os dois.
 jobs:
-  ci:
+  verificacoes:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -33,7 +40,7 @@ jobs:
       - name: Cópia do shared para as Edge Functions está em dia
         run: pnpm sync:shared:check
 
-      - uses: denoland/setup-deno@v2
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
           deno-version: v2.x
       - name: Tipos das Edge Functions
@@ -44,10 +51,9 @@ jobs:
       - run: pnpm test:coverage
       - run: pnpm --filter @lotogestor/web test
 
-      # 4. Banco: migrations + seed, pgTAP e lint do schema
+      # 4. Banco: migrations + seed (aplicados pelo `start`), pgTAP e lint do schema
       - name: Supabase local
         run: pnpm exec supabase start -x studio,imgproxy,vector,logflare
-      - run: pnpm exec supabase db reset
       - run: pnpm exec supabase test db
       - run: pnpm exec supabase db lint --level warning --fail-on error
       - name: Testes das Edge Functions (API da CAIXA simulada)
@@ -76,18 +82,64 @@ jobs:
             echo "Chave secreta encontrada no bundle!"; exit 1
           fi
 
-      # 7. E2E (Playwright) em 360×800 e 1280×800 contra o Supabase local
+  # 7. E2E (Playwright) contra o BUILD de produção e o Supabase local, um job por viewport
+  #    (360×800 e 1280×800). Os testes mexem em dados globais (limite de usuários ativos,
+  #    resultados lançados pelo admin): por isso cada viewport tem o seu banco, e não
+  #    vários workers no mesmo.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        projeto: [mobile, desktop]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # O E2E não usa o Studio nem o postgres-meta (só o `gen:types`, no outro job).
+      - name: Supabase local
+        run: pnpm exec supabase start -x studio,imgproxy,vector,logflare,postgres-meta
+
+      - name: Build
+        run: pnpm --filter @lotogestor/web build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
+
       - run: pnpm --filter @lotogestor/web exec playwright install --with-deps chromium
-      - name: Playwright
+      - name: Playwright (${{ matrix.projeto }})
         working-directory: apps/web
         run: |
           printf 'VITE_SUPABASE_URL=http://127.0.0.1:54321\nVITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH\n' > .env.local
-          pnpm test:e2e
+          pnpm test:e2e --project=${{ matrix.projeto }}
         env:
           CI: true
-      - uses: actions/upload-artifact@v7
+          E2E_PREVIEW: 1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.projeto }}
           path: apps/web/test-results
           retention-days: 7
+
+  # Status check exigido pela proteção da main: passa só se todos os jobs acima passaram.
+  ci:
+    if: always()
+    needs: [verificacoes, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Todos os jobs passaram
+        run: |
+          echo "verificacoes=${{ needs.verificacoes.result }} e2e=${{ needs.e2e.result }}"
+          test "${{ needs.verificacoes.result }}" = success
+          test "${{ needs.e2e.result }}" = success
