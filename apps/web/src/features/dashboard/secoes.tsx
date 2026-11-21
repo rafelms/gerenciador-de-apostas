@@ -76,7 +76,12 @@ export function TabelaRoi({
   linhas: (ValoresGrupo & { chave: string; nome: ReactNode })[]
 }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div
+      className="-mx-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-ring"
+      tabIndex={0}
+      role="region"
+      aria-label={`${rotulo}, role para os lados`}
+    >
       <table className="w-full min-w-[30rem] text-sm" aria-label={rotulo}>
         <thead>
           <tr className="border-b text-left text-muted-foreground">

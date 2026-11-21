@@ -25,6 +25,8 @@ export function BarraSuperior() {
   const { perfil, sair } = useAuth()
   const navigate = useNavigate()
   const { naoLidas } = useNotificacoes()
+  // O nome acessível começa pelo texto visível (as iniciais): WCAG 2.5.3.
+  const sigla = perfil ? iniciais(perfil.nome) : '?'
   useNotificacoesAoVivo()
 
   return (
@@ -61,10 +63,11 @@ export function BarraSuperior() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Menu da conta">
+            <Button variant="ghost" size="icon">
               <span className="flex size-11 items-center justify-center rounded-full bg-tinta font-display text-sm font-semibold text-tinta-foreground">
-                {perfil ? iniciais(perfil.nome) : '?'}
+                {sigla}
               </span>
+              <span className="sr-only">, menu da conta</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
