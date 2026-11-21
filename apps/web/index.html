@@ -16,7 +16,24 @@
     <script src="/tema-inicial.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Abertura estática: aparece antes do JS (primeiro paint rápido no 4G) e o React
+         a substitui ao montar. Mesma marca de <Logo />, só com classes (a CSP não deixa
+         estilo inline). -->
+    <div id="root">
+      <div class="flex min-h-dvh items-center justify-center" role="status">
+        <span
+          class="inline-flex items-center gap-2 font-display text-3xl font-semibold tracking-tight"
+        >
+          <svg viewBox="0 0 64 64" class="size-[1.4em] shrink-0" aria-hidden="true">
+            <rect width="64" height="64" rx="16" class="fill-tinta" />
+            <circle cx="32" cy="32" r="18" class="fill-tinta-foreground" />
+            <circle cx="32" cy="32" r="8" class="fill-destaque" />
+          </svg>
+          <span>LotoGestor</span>
+        </span>
+        <span class="sr-only">Carregando…</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

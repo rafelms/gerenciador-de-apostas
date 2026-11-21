@@ -194,7 +194,12 @@ export function AdminMetricasPage() {
 
 function TabelaMetricas({ usuarios }: { usuarios: MetricaUsuario[] }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div
+      className="-mx-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-ring"
+      tabIndex={0}
+      role="region"
+      aria-label="Métricas por usuário, role para os lados"
+    >
       <table className="w-full min-w-[44rem] text-sm" aria-label="Métricas por usuário">
         <thead>
           <tr className="border-b text-left text-muted-foreground">

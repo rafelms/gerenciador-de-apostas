@@ -42,7 +42,7 @@ export function MoneyText({
       {centavosSuaves && virgula > 0 ? (
         <>
           {texto.slice(0, virgula)}
-          <span className="opacity-45">{texto.slice(virgula)}</span>
+          <span className="opacity-70">{texto.slice(virgula)}</span>
         </>
       ) : (
         texto

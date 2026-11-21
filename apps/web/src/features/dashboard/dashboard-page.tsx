@@ -378,7 +378,12 @@ function Graficos({
           legenda={<Legenda series={SERIES_MENSAL} />}
           grafico={<GraficoMensal serie={serie} />}
           tabela={
-            <div className="-mx-4 overflow-x-auto px-4">
+            <div
+              className="-mx-4 overflow-x-auto px-4 focus-visible:outline-2 focus-visible:outline-ring"
+              tabIndex={0}
+              role="region"
+              aria-label="Evolução mês a mês, role para os lados"
+            >
               <table className="w-full min-w-[26rem] text-sm" aria-label="Evolução mês a mês">
                 <thead>
                   <tr className="border-b text-left text-muted-foreground">

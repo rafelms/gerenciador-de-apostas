@@ -119,7 +119,6 @@ export function ApostaCard({
     <div className="relative">
       <Link
         to={`/apostas/${a.id}`}
-        aria-label={titulo}
         className={cn(classe, 'hover:bg-accent')}
         style={{ borderLeftColor: a.modalidade_cor ?? undefined }}
       >
