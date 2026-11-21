@@ -6,6 +6,7 @@ import {
   Home,
   type LucideIcon,
   Microscope,
+  PartyPopper,
   PiggyBank,
   Plus,
   Scale,
@@ -14,6 +15,9 @@ import {
   Ticket,
   Trophy,
 } from 'lucide-react'
+
+import { viradaNoMenu } from '@/features/virada/virada'
+import { hojeIso } from '@/lib/formatadores'
 
 export interface ItemNav {
   rota: string
@@ -33,6 +37,10 @@ export const navPrincipal: ItemNav[] = [
 
 // Itens do menu "Mais" (mobile) — também listados na sidebar do desktop.
 export const navMais: ItemNav[] = [
+  // Aba temporária do concurso especial; sai do menu uma semana depois do sorteio.
+  ...(viradaNoMenu(hojeIso())
+    ? [{ rota: '/virada', rotulo: 'Mega da Virada', icone: PartyPopper }]
+    : []),
   { rota: '/resultados', rotulo: 'Resultados', icone: Trophy },
   { rota: '/analisador', rotulo: 'Analisador', icone: Microscope },
   { rota: '/importar', rotulo: 'Importar', icone: FileUp },

@@ -116,6 +116,12 @@ export const router = createBrowserRouter([
                 }),
               },
               {
+                path: '/virada',
+                lazy: async () => ({
+                  Component: (await import('@/features/virada/virada-page')).ViradaPage,
+                }),
+              },
+              {
                 path: '/simulador-rateio',
                 lazy: async () => ({
                   Component: (await import('@/features/simulador/simulador-page')).SimuladorPage,

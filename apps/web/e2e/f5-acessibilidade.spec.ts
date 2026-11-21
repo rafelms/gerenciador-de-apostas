@@ -27,6 +27,7 @@ const TELAS = [
   '/exportar',
   '/simulador-rateio',
   '/orcamento',
+  '/virada',
   '/notificacoes',
   '/configuracoes',
 ]

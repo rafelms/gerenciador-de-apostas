@@ -18,4 +18,7 @@ export const chaves = {
   notificacoes: ['notificacoes'] as const,
   resultados: ['concursos', 'resultados'] as const,
   concursosDoUsuario: ['apostas', 'concursos-do-usuario'] as const,
+  // Aba Mega da Virada: a lista a fazer é própria; as apostas seguem as de 'apostas'.
+  viradaItens: ['virada', 'itens'] as const,
+  viradaApostas: ['apostas', 'virada'] as const,
 }
