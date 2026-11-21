@@ -6,6 +6,7 @@ import { useFieldArray, useFormContext } from 'react-hook-form'
 import { toast } from 'sonner'
 
 import { ListaDezenas } from '@/components/bola-dezena'
+import { BotaoCopiar } from '@/components/botao-copiar'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,6 +23,7 @@ import { VolanteNumerico } from '@/components/volante-numerico'
 import { precoVigente, type Modalidade } from '@/features/modalidades/use-modalidades'
 import { cn } from '@/lib/utils'
 import type { FormAposta } from './estado'
+import { promptParaIA } from './prompt-ia'
 
 function DialogColar({
   modalidade,
@@ -72,6 +74,19 @@ function DialogColar({
             Um jogo por linha. Separe as dezenas com espaço, vírgula, hífen ou |.
           </DialogDescription>
         </DialogHeader>
+        <div className="grid gap-2 rounded-2xl bg-muted p-3 text-sm">
+          <p>
+            Tem fotos ou prints das apostas? Copie a instrução, envie com as imagens para a sua IA e
+            cole aqui o que ela devolver.
+          </p>
+          <BotaoCopiar
+            variant="outline"
+            texto="Copiar instrução para a IA"
+            className="justify-self-start"
+            obterTexto={() => promptParaIA(modalidade.regra)}
+            mensagemSucesso="Instrução copiada. Cole na sua IA junto com as imagens."
+          />
+        </div>
         <div className="grid gap-2">
           <Label htmlFor="colar-dezenas">Jogos</Label>
           <Textarea

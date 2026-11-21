@@ -82,6 +82,14 @@ test.describe('Aceite F1', () => {
 
     // Cola os 8 jogos de uma vez, no formato do comprovante.
     await page.getByRole('button', { name: 'Colar dezenas' }).click()
+    // O botão entrega à IA do usuário a instrução do formato, já com a regra da Mega-Sena.
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.getByRole('button', { name: 'Copiar instrução para a IA' }).click()
+    await expect(page.getByText('Instrução copiada.').first()).toBeVisible()
+    const instrucao = await page.evaluate(() => navigator.clipboard.readText())
+    expect(instrucao).toContain('da Mega-Sena')
+    expect(instrucao).toContain('Um jogo por linha')
+    expect(instrucao).toContain('entre 01 e 60')
     await page
       .getByLabel('Jogos')
       .fill(
