@@ -11,6 +11,12 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import {
+  apagarCacheOffline,
+  lerSessaoOffline,
+  salvarSessaoOffline,
+  trocouDeDono,
+} from '@/app/cache-offline'
 import { supabase } from '@/lib/supabase'
 import type { Tables } from '@/types/database'
 import { textosAuth } from './textos'
@@ -60,12 +66,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Importante: não chamar o Supabase de dentro deste callback (pode travar o lock
     // interno do supabase-js). Só guardamos a sessão; a query abaixo faz o resto.
     // O evento INITIAL_SESSION entrega a sessão salva logo na inscrição.
-    const { data } = supabase.auth.onAuthStateChange((_evento, novaSessao) => {
+    const { data } = supabase.auth.onAuthStateChange((evento, novaSessao) => {
       setSessao(novaSessao)
       setSessaoCarregada(true)
+      // Qualquer saída (botão, "sair de todos", sessão expirada) leva os dados junto.
+      if (evento === 'SIGNED_OUT') {
+        queryClient.clear()
+        apagarCacheOffline()
+      }
     })
     return () => data.subscription.unsubscribe()
-  }, [])
+  }, [queryClient])
 
   const userId = sessao?.user.id
   // O token muda quando a sessão sobe para aal2 após o MFA: a chave inclui o token
@@ -78,12 +89,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: Infinity,
     placeholderData: (anterior, consultaAnterior) =>
       consultaAnterior?.queryKey[1] === userId ? anterior : undefined,
+    // Sem rede, a cópia salva abre o app (modo leitura); com rede, é refeita na hora.
+    initialData: () => (userId ? lerSessaoOffline<DadosDaSessao>(userId) : undefined),
+    initialDataUpdatedAt: 0,
   })
+
+  // Outro usuário no mesmo aparelho: some com os dados salvos do anterior antes de mostrar.
+  useEffect(() => {
+    if (userId && trocouDeDono(userId)) {
+      queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'sessao' })
+    }
+  }, [userId, queryClient])
+
+  useEffect(() => {
+    if (userId && consulta.isSuccess && consulta.isFetched && consulta.data.perfil?.ativo)
+      salvarSessaoOffline(userId, consulta.data)
+  }, [userId, consulta.isSuccess, consulta.isFetched, consulta.data])
 
   const sair = useCallback(async () => {
     await supabase.auth.signOut()
-    // Logout limpa todo o cache de dados do servidor (seção 8.1).
+    // Logout limpa todo o cache de dados do servidor (seção 8.1), também o salvo no aparelho.
     queryClient.clear()
+    apagarCacheOffline()
   }, [queryClient])
 
   // RLS esconde o perfil de usuário desativado (eh_ativo() = false): desloga.

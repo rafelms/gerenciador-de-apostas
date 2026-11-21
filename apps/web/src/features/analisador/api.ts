@@ -1,6 +1,7 @@
 import type { FaixaDezenas } from '@shared/analisador.ts'
 
 import { supabase } from '@/lib/supabase'
+import type { Json } from '@/types/database'
 
 export const chavesAnalisador = {
   apostas: ['apostas', 'analisador'] as const,
@@ -85,7 +86,14 @@ export async function salvarPreferencias(
   const base = (preferenciasAtuais as Record<string, unknown> | null) ?? {}
   const { error } = await supabase
     .from('profiles')
-    .update({ preferencias: { ...base, analisador: { ...lerPreferencias(base), ...analisador } } })
+    .update({
+      preferencias: {
+        ...base,
+        analisador: { ...lerPreferencias(base), ...analisador },
+      } as unknown as {
+        [chave: string]: Json
+      },
+    })
     .eq('id', userId)
   if (error) throw new Error('Não foi possível salvar as preferências.')
 }

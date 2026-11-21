@@ -1,3 +1,4 @@
+import { AvisoOffline } from '@/components/aviso-offline'
 import { Outlet } from 'react-router'
 
 import { BarraInferior } from './barra-inferior'
@@ -25,6 +26,7 @@ export function AppLayout() {
         tabIndex={-1}
         className="mx-auto w-full max-w-6xl px-4 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom))] outline-none lg:px-8 lg:pb-12"
       >
+        <AvisoOffline />
         <Outlet />
       </main>
       <BarraInferior />
