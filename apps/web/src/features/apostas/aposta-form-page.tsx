@@ -39,7 +39,7 @@ const etapas: { titulo: string; campos: FieldPath<FormAposta>[] }[] = [
   },
   {
     titulo: 'Divisão e detalhes',
-    campos: ['participantes', 'dataAposta', 'localCompra', 'observacao'],
+    campos: ['participantes', 'qtdPessoas', 'dataAposta', 'localCompra', 'observacao'],
   },
 ]
 

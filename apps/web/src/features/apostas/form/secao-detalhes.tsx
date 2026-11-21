@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { Modalidade } from '@/features/modalidades/use-modalidades'
+import { DivisaoPorQuantidade, SeletorModoDivisao } from './divisao-quantidade'
 import { valorPagoEfetivo, type FormAposta } from './estado'
 
 const LOCAIS = ['App Loterias CAIXA', 'Lotérica', 'Internet Banking']
@@ -67,6 +68,13 @@ export function SecaoDetalhes({ modalidade }: { modalidade: Modalidade | undefin
     }
   }
 
+  function escolherModo(modo: FormAposta['modoDivisao']) {
+    setValue('modoDivisao', modo)
+    // Leva a quantidade de pessoas já cadastradas para o modo simplificado.
+    if (modo === 'quantidade' && form.participantes.length > 2)
+      setValue('qtdPessoas', String(form.participantes.length))
+  }
+
   return (
     <div className="grid gap-6">
       <section className="grid gap-3" aria-labelledby="titulo-divisao">
@@ -82,7 +90,13 @@ export function SecaoDetalhes({ modalidade }: { modalidade: Modalidade | undefin
           </Label>
         </div>
 
-        {form.dividir && (
+        {form.dividir && <SeletorModoDivisao valor={form.modoDivisao} onChange={escolherModo} />}
+
+        {form.dividir && form.modoDivisao === 'quantidade' && (
+          <DivisaoPorQuantidade valorPago={valorPago} />
+        )}
+
+        {form.dividir && form.modoDivisao === 'pessoas' && (
           <div className="grid gap-3">
             <ul className="grid gap-2">
               {fields.map((field, i) => (
