@@ -30,6 +30,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { precoVigente, useModalidades } from '@/features/modalidades/use-modalidades'
+import { useTrabalhoNaoSalvo } from '@/lib/atualizacao'
 import { formatarData } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
@@ -153,6 +154,8 @@ export function ImportarPdf() {
   const idArquivo = useId()
   const [itens, setItens] = useState<Item[]>([])
   const [arrastando, setArrastando] = useState(false)
+  // Comprovantes lidos e ainda não importados.
+  useTrabalhoNaoSalvo(itens.length > 0)
 
   const opcoes: OpcoesComprovante = {
     precoSimples: (slug, data) => {

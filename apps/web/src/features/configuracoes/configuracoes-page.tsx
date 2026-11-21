@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/features/auth/auth-provider'
 import { textosAuth } from '@/features/auth/textos'
+import { useTrabalhoNaoSalvo } from '@/lib/atualizacao'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { SecaoMfa } from './secao-mfa'
@@ -42,6 +43,7 @@ export function ConfiguracoesPage() {
     resolver: zodResolver(definirSenhaSchema),
     defaultValues: { senha: '', confirmacao: '' },
   })
+  useTrabalhoNaoSalvo(formPerfil.formState.isDirty || formSenha.formState.isDirty)
 
   async function salvarPerfil({ nome }: { nome: string }) {
     if (!perfil) return

@@ -28,6 +28,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { rotulosTipo } from '@/features/apostas/filtros'
 import { useModalidades } from '@/features/modalidades/use-modalidades'
+import { useTrabalhoNaoSalvo } from '@/lib/atualizacao'
 import { formatarData } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
@@ -77,6 +78,8 @@ export function ImportarExcel() {
   const [previa, setPrevia] = useState<Previa | null>(null)
   const [arrastando, setArrastando] = useState(false)
   const [pularDuplicatas, setPularDuplicatas] = useState(true)
+  // Prévia em revisão ainda não importada.
+  useTrabalhoNaoSalvo(previa !== null)
 
   const ler = useMutation({
     mutationFn: montarPrevia,

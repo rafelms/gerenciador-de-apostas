@@ -40,6 +40,7 @@ import {
   type ConcursoDaAposta,
   type Premio,
 } from '@/features/conferencia/api'
+import { useTrabalhoNaoSalvo } from '@/lib/atualizacao'
 import { formatarData, hojeIso } from '@/lib/formatadores'
 import { chaves } from '@/lib/query-keys'
 
@@ -121,6 +122,7 @@ function DialogPremioManual({
     resolver: zodResolver(formSchema),
     defaultValues: { bruto: inicial ? formatarBRL(inicial).replace('R$ ', '') : '', ir: '' },
   })
+  useTrabalhoNaoSalvo(form.formState.isDirty)
   const bruto = tentarDeReais(form.watch('bruto'))
   // IR sugerido pela regra configurada; o usuário corrige se o comprovante disser outro valor.
   const sugerido =
