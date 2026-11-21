@@ -1,9 +1,9 @@
 -- Toda tabela do schema public precisa de RLS + pelo menos uma política,
--- e o papel anon não pode ter nenhum privilégio em tabela pública.
+-- e o papel anon não pode ter nenhum privilégio em tabela nem em função pública.
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(3);
+select plan(4);
 
 select is(
   (select array_agg(c.relname order by c.relname)
@@ -28,6 +28,15 @@ select is(
     where table_schema = 'public' and grantee = 'anon'),
   null,
   'anon não tem privilégio em nenhuma tabela pública'
+);
+
+select is(
+  (select array_agg(p.proname::text order by p.proname)
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')
+      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')),
+  null,
+  'anon não executa nenhuma função pública'
 );
 
 select * from finish();
