@@ -2,6 +2,8 @@
 //   POST /sync-resultados           → sincroniza todas as modalidades (cron ou admin). O cron
 //                                     pode mandar { respostasCaixa } já buscadas no GitHub Actions
 //   POST /sync-resultados/pendencias → (cron) concursos que as apostas precisam, por modalidade
+//   POST /sync-resultados/historico → (admin) busca até 30 concursos que faltam entre os N mais
+//                                     recentes, para a frequência do analisador (F5.2)
 //   POST /sync-resultados/manual    → admin lança/edita um resultado à mão e dispara a conferência
 //   POST /sync-resultados/informar  → usuário informa o resultado de um concurso da PRÓPRIA aposta
 //                                     enquanto a API não traz o oficial (que tem prioridade)
@@ -17,10 +19,21 @@ import {
   type ResultadoManualInput,
 } from '../_shared/domain/schemas/resultados.ts'
 import { erro, json } from '../_shared/respostas.ts'
-import { gravarConcurso, pendencias, sincronizar } from '../_shared/sincronizar.ts'
+import {
+  gravarConcurso,
+  HISTORICO_MAXIMO,
+  importarHistorico,
+  pendencias,
+  sincronizar,
+} from '../_shared/sincronizar.ts'
 import { supabaseAdmin } from '../_shared/supabase-admin.ts'
 
 const informarSchema = z.object({ apostaId: z.uuid() })
+
+const historicoSchema = z.object({
+  modalidadeSlug: z.string().regex(/^[a-z]+$/),
+  quantidade: z.number().int().min(10).max(HISTORICO_MAXIMO),
+})
 
 // Respostas da CAIXA que o cron buscou no GitHub Actions, por caminho ("/megasena/3070").
 const sincronizarSchema = z.object({
@@ -196,6 +209,24 @@ Deno.serve(async (req) => {
     if (acao === 'manual') {
       if (origem !== 'admin') return erro(req, 403, 'Acesso negado.')
       return await lancarManual(req)
+    }
+    if (acao === 'historico') {
+      if (origem !== 'admin') return erro(req, 403, 'Acesso negado.')
+      const lido = await lerCorpo(req)
+      const entrada = historicoSchema.safeParse(lido.ok ? lido.corpo : null)
+      if (!entrada.success) return erro(req, 400, 'Escolha a modalidade e de 10 a 500 concursos.')
+      return json(
+        req,
+        await importarHistorico(
+          {
+            db: supabaseAdmin,
+            urlApi: Deno.env.get('CAIXA_API_URL') || undefined,
+            urlAlternativa: Deno.env.get('API_ALTERNATIVA_URL') || undefined,
+          },
+          entrada.data.modalidadeSlug,
+          entrada.data.quantidade,
+        ),
+      )
     }
     if (acao === 'pendencias') {
       if (origem !== 'cron') return erro(req, 403, 'Acesso negado.')

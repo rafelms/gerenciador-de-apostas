@@ -487,3 +487,120 @@ export async function sincronizar(
   const { data: prazos } = await deps.db.rpc('fn_processar_prazos')
   return { modalidades: resumo, prazos }
 }
+
+// ---------------------------------------------------------------------------
+// Histórico de concursos (F5.2): backfill opcional para a frequência do analisador
+// ---------------------------------------------------------------------------
+export const HISTORICO_MAXIMO = 500
+
+export interface ResumoHistorico {
+  slug: string
+  /** Último concurso conhecido (o mais recente gravado, ou o da API). */
+  ultimo: number
+  /** Concursos pedidos: do `ultimo` para trás. */
+  alvo: number
+  /** Novos nesta chamada. */
+  inseridos: number
+  /** Obtidos da API nesta chamada (novos ou que existiam sem as dezenas). */
+  obtidos: number
+  /** Ainda sem resultado dentro do alvo (chamar de novo até zerar). */
+  faltam: number
+  /** Concursos que a API não devolveu nesta chamada. */
+  falhas: number[]
+}
+
+/**
+ * Busca até 30 concursos que faltam entre os `quantidade` mais recentes, do mais novo para
+ * o mais antigo. Cada chamada avança um bloco; a tela do admin repete até `faltam` zerar.
+ * Resultados já gravados (de qualquer fonte) não são buscados de novo: o histórico só
+ * alimenta estatísticas, e a sincronização normal cuida dos concursos das apostas.
+ */
+export async function importarHistorico(
+  deps: Dependencias,
+  slug: string,
+  quantidade: number,
+): Promise<ResumoHistorico> {
+  if (!ehSlugSuportado(slug)) throw new Error('Modalidade inválida.')
+  const regra = obterRegra(slug)
+  const { db } = deps
+  const esperar = deps.esperar ?? esperarPadrao
+  const busca: Busca = { deps, caixaFora: false }
+
+  const { data: modalidade, error } = await db
+    .from('modalidades')
+    .select('id')
+    .eq('slug', slug)
+    .single<{ id: number }>()
+  if (error || !modalidade) throw new Error('Modalidade inválida.')
+
+  // O mais recente já gravado; sem nenhum, pergunta à API (e já grava).
+  const { data: topo } = await db
+    .from('concursos')
+    .select('numero')
+    .eq('modalidade_id', modalidade.id)
+    .not('dezenas', 'is', null)
+    .order('numero', { ascending: false })
+    .limit(1)
+    .maybeSingle<{ numero: number }>()
+  let ultimo = topo?.numero
+  let inseridos = 0
+  if (ultimo === undefined) {
+    const r = await buscarConcurso(busca, slug, regra)
+    const g = await gravarConcurso(db, modalidade.id, r.concurso, r.fonte)
+    if (g.novo) inseridos++
+    ultimo = r.concurso.numero
+  }
+
+  const alvo = Math.min(Math.max(1, Math.trunc(quantidade)), HISTORICO_MAXIMO, ultimo)
+  const primeiro = ultimo - alvo + 1
+  const { data: gravados, error: erroLeitura } = await db
+    .from('concursos')
+    .select('numero')
+    .eq('modalidade_id', modalidade.id)
+    .gte('numero', primeiro)
+    .lte('numero', ultimo)
+    .not('dezenas', 'is', null)
+  if (erroLeitura) throw new Error(`Falha ao ler concursos: ${erroLeitura.message}`)
+  const tem = new Set((gravados ?? []).map((g) => g.numero as number))
+  const faltando: number[] = []
+  for (let n = ultimo; n >= primeiro; n--) if (!tem.has(n)) faltando.push(n)
+
+  const lote = faltando.slice(0, MAX_CONCURSOS_POR_EXECUCAO)
+  const falhas: number[] = []
+  for (const [i, numero] of lote.entries()) {
+    if (i > 0) await esperar(INTERVALO_MS)
+    try {
+      const r = await buscarConcurso(busca, slug, regra, numero)
+      const g = await gravarConcurso(db, modalidade.id, r.concurso, r.fonte)
+      if (g.novo) inseridos++
+      // Se alguma aposta usa este concurso, confere já (idempotente).
+      if (g.mudou) await conferirConcurso(db, g.id, { renotificar: g.corrigido })
+    } catch {
+      falhas.push(numero)
+    }
+  }
+
+  const obtidos = lote.length - falhas.length
+  const resumo: ResumoHistorico = {
+    slug,
+    ultimo,
+    alvo,
+    inseridos,
+    obtidos,
+    faltam: faltando.length - obtidos,
+    falhas,
+  }
+  await db.from('sync_logs').insert({
+    origem: 'admin',
+    modalidade_id: modalidade.id,
+    status: falhas.length > 0 ? 'erro' : 'ok',
+    ultimo_concurso: ultimo,
+    inseridos,
+    conferidos: 0,
+    mensagem: (
+      `Histórico: ${obtidos} de ${lote.length} concursos obtidos; faltam ${resumo.faltam} dos ${alvo}.` +
+      (falhas.length > 0 ? ` Sem resposta: ${falhas.join(', ')}.` : '')
+    ).slice(0, 500),
+  })
+  return resumo
+}

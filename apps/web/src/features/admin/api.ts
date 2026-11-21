@@ -76,6 +76,27 @@ export async function lancarResultadoManual(r: ResultadoManualInput) {
   return data
 }
 
+export interface ResumoHistorico {
+  slug: string
+  ultimo: number
+  alvo: number
+  inseridos: number
+  obtidos: number
+  faltam: number
+  falhas: number[]
+}
+
+/** F5.2: um bloco (até 30) dos concursos que faltam entre os `quantidade` mais recentes. */
+export async function importarHistorico(modalidadeSlug: string, quantidade: number) {
+  const { data, error } = await supabase.functions.invoke<ResumoHistorico>(
+    'sync-resultados/historico',
+    { body: { modalidadeSlug, quantidade } },
+  )
+  if (error || !data)
+    throw new Error(await mensagemDaFunction(error, 'Não foi possível buscar o histórico.'))
+  return data
+}
+
 export async function listarSyncLogs() {
   const { data, error } = await supabase
     .from('sync_logs')
