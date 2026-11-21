@@ -75,6 +75,31 @@ test.describe('Modo offline (F5.4)', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Sem conexão.' })).toHaveCount(0)
   })
 
+  test('modalidades restauradas do cache continuam com as regras (nova aposta não quebra)', async ({
+    page,
+  }, info) => {
+    const mobile = info.project.name === 'mobile'
+    const { email } = await criarUsuario('membro')
+    await entrarPelaTela(page, email)
+    await expect(page).toHaveURL('/')
+    await page.goto('/apostas/nova')
+    await expect(page.getByRole('button', { name: 'Mega-Sena' })).toBeVisible()
+    // Espera o cache (com as modalidades) ser salvo e recarrega: os dados voltam do JSON.
+    await expect
+      .poll(async () => (await lerArmazenamento(page)).cache ?? '', { timeout: 10_000 })
+      .toContain('modalidades')
+    await page.reload()
+
+    await page.getByRole('button', { name: 'Mega-Sena' }).click()
+    if (mobile) await page.getByRole('button', { name: 'Próximo' }).click()
+    await expect(page.getByText('Algo deu errado nesta tela')).toHaveCount(0)
+    await expect(page.getByLabel('Concurso', { exact: true })).toBeVisible()
+    if (mobile) await page.getByRole('button', { name: 'Próximo' }).click()
+    await page.getByRole('button', { name: 'Dezena 01', exact: true }).first().click()
+    await expect(page.getByText('1/6–20')).toBeVisible()
+    await expect(page.getByText('Algo deu errado nesta tela')).toHaveCount(0)
+  })
+
   test('logout apaga o cache; outro usuário no aparelho não vê os dados do anterior', async ({
     page,
   }) => {
