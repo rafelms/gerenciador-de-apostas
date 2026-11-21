@@ -89,8 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staleTime: Infinity,
     placeholderData: (anterior, consultaAnterior) =>
       consultaAnterior?.queryKey[1] === userId ? anterior : undefined,
-    // Sem rede, a cópia salva abre o app (modo leitura); com rede, é refeita na hora.
-    initialData: () => (userId ? lerSessaoOffline<DadosDaSessao>(userId) : undefined),
+    // Só SEM rede a cópia salva abre o app (modo leitura). Com rede ela não entra: com
+    // staleTime Infinity, nunca seria refeita (ex.: o nível aal2 depois do MFA).
+    initialData: () =>
+      userId && !navigator.onLine ? lerSessaoOffline<DadosDaSessao>(userId) : undefined,
     initialDataUpdatedAt: 0,
   })
 
