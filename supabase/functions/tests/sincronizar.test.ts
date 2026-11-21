@@ -9,6 +9,7 @@ import {
   buscarJson,
   buscarResultadosDaAposta,
   gravarConcurso,
+  importarHistorico,
   pendencias,
   sincronizar,
 } from '../_shared/sincronizar.ts'
@@ -755,3 +756,130 @@ Deno.test(
     }
   },
 )
+
+// ---------------------------------------------------------------------------
+// Histórico (F5.2)
+// ---------------------------------------------------------------------------
+const TOPO_HIST = 9300
+
+/** API que responde qualquer concurso da Mega, menos os de `fora` (HTTP 500 = "não achei"). */
+function apiHistorico(fora: Set<number>, chamadas: string[] = []): typeof fetch {
+  return (async (entrada: RequestInfo | URL) => {
+    const url = String(entrada)
+    chamadas.push(url)
+    const m = /^https:\/\/api\.test\/megasena\/(\d+)$/.exec(url)
+    if (m && !fora.has(Number(m[1])))
+      return Response.json(respostaMega(Number(m[1]), ['05', '11', '23', '34', '45', '56']))
+    return new Response('', { status: m ? 500 : 404 })
+  }) as typeof fetch
+}
+
+async function gravarMega(megaId: number, numero: number) {
+  const { error } = await db.from('concursos').insert({
+    modalidade_id: megaId,
+    numero,
+    data_sorteio: '2026-11-01',
+    dezenas: [1, 2, 3, 4, 5, 6],
+    fonte: 'api_caixa',
+  })
+  if (error) throw error
+}
+
+Deno.test(
+  'histórico: busca do mais novo para o mais antigo, pula os gravados e repete as falhas',
+  opcoes,
+  async () => {
+    const { data: mega } = await db.from('modalidades').select('id').eq('slug', 'megasena').single()
+    const megaId = mega!.id as number
+    try {
+      await gravarMega(megaId, TOPO_HIST)
+      await gravarMega(megaId, TOPO_HIST - 2)
+      const chamadas: string[] = []
+      const deps = { db, ...DEPS_P4 }
+
+      // 10 concursos: 9291–9300; 9300 e 9298 já existem; 9295 não vem da API.
+      const r1 = await importarHistorico(
+        { ...deps, fetch: apiHistorico(new Set([TOPO_HIST - 5]), chamadas) },
+        'megasena',
+        10,
+      )
+      assertEquals(r1, {
+        slug: 'megasena',
+        ultimo: TOPO_HIST,
+        alvo: 10,
+        inseridos: 7,
+        obtidos: 7,
+        faltam: 1,
+        falhas: [TOPO_HIST - 5],
+      })
+      // Não busca o último na API (já está gravado) nem os que já existem.
+      assert(!chamadas.some((u) => u.endsWith('/megasena') || u.endsWith(`/${TOPO_HIST - 2}`)))
+      assert(chamadas[0]!.endsWith(`/${TOPO_HIST - 1}`), 'começa pelo mais recente')
+
+      const r2 = await importarHistorico(
+        { ...deps, fetch: apiHistorico(new Set()) },
+        'megasena',
+        10,
+      )
+      assertEquals([r2.inseridos, r2.faltam, r2.falhas], [1, 0, []])
+
+      const { data: log } = await db
+        .from('sync_logs')
+        .select('origem, status, mensagem')
+        .eq('modalidade_id', megaId)
+        .like('mensagem', 'Histórico:%')
+        .order('id', { ascending: false })
+        .limit(2)
+      assertEquals(
+        log?.map((l) => [l.origem, l.status]),
+        [
+          ['admin', 'ok'],
+          ['admin', 'erro'],
+        ],
+      )
+    } finally {
+      await db
+        .from('concursos')
+        .delete()
+        .eq('modalidade_id', megaId)
+        .gte('numero', TOPO_HIST - 60)
+        .lte('numero', TOPO_HIST)
+    }
+  },
+)
+
+Deno.test('histórico: no máximo 30 concursos por chamada', opcoes, async () => {
+  const { data: mega } = await db.from('modalidades').select('id').eq('slug', 'megasena').single()
+  const megaId = mega!.id as number
+  try {
+    await gravarMega(megaId, TOPO_HIST)
+    const r = await importarHistorico(
+      { db, ...DEPS_P4, fetch: apiHistorico(new Set()) },
+      'megasena',
+      45,
+    )
+    assertEquals([r.inseridos, r.faltam], [30, 14])
+    const { count } = await db
+      .from('concursos')
+      .select('id', { count: 'exact', head: true })
+      .eq('modalidade_id', megaId)
+      .gte('numero', TOPO_HIST - 30)
+      .lte('numero', TOPO_HIST)
+    assertEquals(count, 31, 'os 30 mais recentes abaixo do topo')
+  } finally {
+    await db
+      .from('concursos')
+      .delete()
+      .eq('modalidade_id', megaId)
+      .gte('numero', TOPO_HIST - 60)
+      .lte('numero', TOPO_HIST)
+  }
+})
+
+Deno.test('histórico: modalidade inválida', async () => {
+  await assertRejects(
+    () => importarHistorico({ db, esperar: semEspera }, 'bingo', 10),
+    Error,
+    'Modalidade inválida',
+  )
+})

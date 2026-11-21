@@ -1,8 +1,16 @@
 import { rateioDoBanco } from '@shared/resultados.ts'
 import { resultadoManualSchema } from '@shared/schemas/resultados.ts'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, ClipboardPen, Loader2, RefreshCw, Search } from 'lucide-react'
-import { useState } from 'react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardPen,
+  History,
+  Loader2,
+  RefreshCw,
+  Search,
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { CabecalhoPagina } from '@/components/cabecalho-pagina'
@@ -28,9 +36,11 @@ import { chaves } from '@/lib/query-keys'
 import {
   buscarConcursoAdmin,
   chavesAdmin,
+  importarHistorico,
   lancarResultadoManual,
   listarSyncLogs,
   sincronizarAgora,
+  type ResumoHistorico,
   type ResumoSync,
 } from './api'
 
@@ -92,6 +102,171 @@ function Sincronizar() {
               </li>
             ))}
           </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+const QUANTIDADES_HISTORICO = [100, 300, 500] as const
+/** A function aceita 10 chamadas/min por admin: no máximo uma a cada 6,5 s. */
+const INTERVALO_HISTORICO_MS = 6500
+
+/**
+ * F5.2: busca os concursos antigos que a frequência do analisador usa. A function traz até
+ * 30 por chamada; aqui repete até completar, parar de avançar ou o admin cancelar.
+ */
+function Historico({ modalidades }: { modalidades: Modalidade[] }) {
+  const queryClient = useQueryClient()
+  const [slug, setSlug] = useState(modalidades[0]?.slug ?? '')
+  const [quantidade, setQuantidade] = useState<number>(300)
+  const [resumo, setResumo] = useState<ResumoHistorico | null>(null)
+  const [rodando, setRodando] = useState(false)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const cancelado = useRef(false)
+
+  useEffect(
+    () => () => {
+      cancelado.current = true
+    },
+    [],
+  )
+
+  async function executar() {
+    cancelado.current = false
+    setRodando(true)
+    setAviso(null)
+    setResumo(null)
+    try {
+      for (;;) {
+        const inicio = Date.now()
+        const r = await importarHistorico(slug, quantidade)
+        setResumo(r)
+        if (r.faltam === 0) {
+          toast.success(`Histórico completo: ${r.alvo} concursos.`)
+          break
+        }
+        if (r.obtidos === 0) {
+          setAviso(
+            `A API não devolveu ${r.falhas.length === 1 ? 'o concurso' : 'os concursos'} ${r.falhas.join(', ')}. Tente mais tarde.`,
+          )
+          break
+        }
+        if (cancelado.current) break
+        const espera = INTERVALO_HISTORICO_MS - (Date.now() - inicio)
+        if (espera > 0) await new Promise((ok) => setTimeout(ok, espera))
+        if (cancelado.current) break
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível buscar o histórico.')
+    } finally {
+      setRodando(false)
+      void queryClient.invalidateQueries({ queryKey: chavesAdmin.syncLogs })
+      void queryClient.invalidateQueries({ queryKey: ['concursos'] })
+    }
+  }
+
+  const prontos = resumo ? resumo.alvo - resumo.faltam : 0
+  const porcento = resumo ? Math.round((prontos / resumo.alvo) * 100) : 0
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2>Histórico de concursos</h2>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <p className="text-sm text-muted-foreground">
+          Opcional. Traz os resultados antigos que o analisador usa para a frequência das dezenas,
+          30 por vez, sem sobrecarregar a API.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="historico-modalidade">Modalidade</Label>
+            <SelectNativo
+              id="historico-modalidade"
+              value={slug}
+              disabled={rodando}
+              onChange={(e) => {
+                setSlug(e.target.value)
+                setResumo(null)
+                setAviso(null)
+              }}
+            >
+              {modalidades.map((m) => (
+                <option key={m.slug} value={m.slug}>
+                  {m.nome}
+                </option>
+              ))}
+            </SelectNativo>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="historico-quantidade">Últimos concursos</Label>
+            <SelectNativo
+              id="historico-quantidade"
+              value={quantidade}
+              disabled={rodando}
+              onChange={(e) => {
+                setQuantidade(Number(e.target.value))
+                setResumo(null)
+                setAviso(null)
+              }}
+            >
+              {QUANTIDADES_HISTORICO.map((q) => (
+                <option key={q} value={q}>
+                  {q}
+                </option>
+              ))}
+            </SelectNativo>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => void executar()} disabled={rodando || !slug}>
+            {rodando ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : (
+              <History aria-hidden="true" />
+            )}
+            {rodando ? 'Buscando…' : 'Buscar histórico'}
+          </Button>
+          {rodando && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                cancelado.current = true
+              }}
+            >
+              Parar
+            </Button>
+          )}
+        </div>
+        {resumo && (
+          <div className="grid gap-2">
+            <div
+              role="progressbar"
+              aria-label="Histórico de concursos"
+              aria-valuemin={0}
+              aria-valuemax={resumo.alvo}
+              aria-valuenow={prontos}
+              className="h-2 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${porcento}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {prontos} de {resumo.alvo} concursos (até o {resumo.ultimo})
+              {resumo.faltam > 0 && !rodando && !aviso ? ' · parado' : ''}
+            </p>
+          </div>
+        )}
+        {aviso && (
+          <p className="flex items-start gap-2 text-sm text-alerta" role="status">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {aviso}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -371,6 +546,7 @@ export function AdminResultadosPage() {
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="grid content-start gap-4">
             <Sincronizar />
+            <Historico modalidades={modalidades.data} />
             <Log modalidades={modalidades.data} />
           </div>
           <LancarManual modalidades={modalidades.data} />
