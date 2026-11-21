@@ -443,6 +443,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"virada_itens": {
+                  Row: {
+                    "concurso": number,"created_at": string,"descricao": string,"feito": boolean,"id": string,"updated_at": string,"user_id": string,"valor_previsto_centavos": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "concurso": number,"created_at"?: string,"descricao": string,"feito"?: boolean,"id"?: string,"updated_at"?: string,"user_id"?: string,"valor_previsto_centavos"?: number | null
+                  }
+                  Update: {
+                    "concurso"?: number,"created_at"?: string,"descricao"?: string,"feito"?: boolean,"id"?: string,"updated_at"?: string,"user_id"?: string,"valor_previsto_centavos"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "virada_itens_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
