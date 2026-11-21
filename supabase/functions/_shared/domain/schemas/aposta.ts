@@ -1,7 +1,7 @@
 // ARQUIVO GERADO por `pnpm sync:shared` — edite em packages/shared/src.
 import { z } from 'zod'
 
-import { tarifaDentroDoLimite } from '../aposta.ts'
+import { MAX_PARTICIPANTES, tarifaDentroDoLimite } from '../aposta.ts'
 import { obterRegra } from '../regras/index.ts'
 
 export const slugModalidadeSchema = z.enum(['megasena', 'lotofacil', 'quina', 'lotomania'])
@@ -42,7 +42,7 @@ export const apostaSchema = z
     jogos: z.array(z.array(z.number())).min(1, 'Adicione pelo menos um jogo.').max(200),
     bolao: bolaoSchema.nullable(),
     valorPagoCentavos: centavos.nonnegative('O valor pago não pode ser negativo.'),
-    participantes: z.array(participanteSchema).max(30),
+    participantes: z.array(participanteSchema).max(MAX_PARTICIPANTES),
     localCompra: z.string().trim().max(60).nullable(),
     observacao: z.string().trim().max(500, 'Máximo de 500 caracteres.').nullable(),
   })

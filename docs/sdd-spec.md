@@ -724,7 +724,9 @@ calcularIR(base, cfg):
 3. Concurso inicial (sugere o próximo concurso via `concursos.data_proximo`) e qtd. de concursos (teimosinha).
 4. Jogos: **volante numérico** (grade de bolinhas clicáveis, mostra contador `7/6–20` e custo do jogo em tempo real). Botões: adicionar jogo, duplicar, colar dezenas ("02 09 24 28 44 48 49" ou com `|`, `-`, `,`).
 5. Valores: simples → custo calculado (editável, com aviso se divergir); bolão → total de cotas, cotas do usuário, valor da cota, tarifa (valida ≤ 35% da cota), total pago.
-6. Divisão (opcional): participantes com nome e peso; "eu" incluído por padrão.
+6. Divisão (opcional), em dois modos (seletor "Como dividir?"):
+   - **Informar as pessoas**: participantes com nome e peso; "eu" incluído por padrão.
+   - **Só a quantidade**: o usuário informa só quantas pessoas dividem (2 a 30, ele incluído) e vê a parte de cada um. Sem mudança no modelo de dados: grava participantes genéricos `Eu`, `Pessoa 2` … `Pessoa N`, todos com peso 1 e com `contribuicao_centavos` = rateio do valor pago pelo maior resto (9.1; o usuário é o 1º e leva o 1º centavo da sobra). Assim `gasto_usuario` (7.3) é exatamente a parte mostrada no formulário, e analisador, dashboard, exportação e divisão de prêmio (9.6, pesos iguais) funcionam como antes. Na edição, uma divisão nesse formato (`quantidadeDaDivisaoIgual`, em `packages/shared/src/aposta.ts`) reabre no modo "só a quantidade"; trocar para "Informar as pessoas" mostra os participantes genéricos para renomear.
 7. Data da aposta, local, observação, anexo (foto do comprovante).
 
 **Lista de apostas:**

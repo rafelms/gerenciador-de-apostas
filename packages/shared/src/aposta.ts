@@ -1,4 +1,4 @@
-import { multiplicarFracao, type Centavos } from './dinheiro.ts'
+import { multiplicarFracao, ratearMaiorResto, type Centavos } from './dinheiro.ts'
 import type { RegraModalidade } from './regras/tipos.ts'
 
 /** Tarifa de serviço do bolão: até 35% do valor da cota (seção 5.1). */
@@ -45,4 +45,63 @@ export function valorCotaConfere(
 ): boolean {
   const custoTotal = custoAposta(regra, jogos, precoSimples)
   return Math.abs(valorCota * totalCotas - custoTotal) <= totalCotas
+}
+
+/** Limite de participantes por aposta (o mesmo do `apostaSchema`). */
+export const MAX_PARTICIPANTES = 30
+
+export interface ParticipanteGenerico {
+  nome: string
+  peso: number
+  ehUsuario: boolean
+  contribuicaoCentavos: Centavos
+}
+
+/**
+ * Divisão "só a quantidade" (seção 11.2): o valor pago é dividido igualmente entre
+ * `quantidade` pessoas (o usuário incluído), pelo maior resto (9.1). O usuário é o 1º
+ * e leva o 1º centavo da sobra. Os demais viram participantes genéricos "Pessoa 2…N".
+ * A contribuição de cada um é gravada, então o gasto do usuário é exatamente a parte dele.
+ */
+export function participantesPorQuantidade(
+  valorPago: Centavos,
+  quantidade: number,
+  nomeUsuario = 'Eu',
+): ParticipanteGenerico[] {
+  if (!Number.isInteger(quantidade) || quantidade < 2 || quantidade > MAX_PARTICIPANTES) {
+    throw new Error(`A quantidade de pessoas vai de 2 a ${MAX_PARTICIPANTES}`)
+  }
+  const partes = ratearMaiorResto(valorPago, Array<number>(quantidade).fill(1))
+  return partes.map((parte, i) => ({
+    nome: i === 0 ? nomeUsuario : `Pessoa ${i + 1}`,
+    peso: 1,
+    ehUsuario: i === 0,
+    contribuicaoCentavos: parte,
+  }))
+}
+
+/**
+ * A divisão gravada tem o formato de `participantesPorQuantidade`? Usado ao editar
+ * para reabrir no modo "só a quantidade". Devolve a quantidade, ou null.
+ */
+export function quantidadeDaDivisaoIgual(
+  valorPago: Centavos,
+  participantes: {
+    nome: string
+    peso: number
+    ehUsuario: boolean
+    contribuicaoCentavos?: Centavos | null
+  }[],
+): number | null {
+  const n = participantes.length
+  if (n < 2 || n > MAX_PARTICIPANTES) return null
+  const esperado = participantesPorQuantidade(valorPago, n)
+  const igual = participantes.every(
+    (p, i) =>
+      p.peso === 1 &&
+      p.ehUsuario === (i === 0) &&
+      (i === 0 || p.nome === esperado[i]!.nome) &&
+      p.contribuicaoCentavos === esperado[i]!.contribuicaoCentavos,
+  )
+  return igual ? n : null
 }

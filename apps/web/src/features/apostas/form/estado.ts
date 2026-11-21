@@ -1,4 +1,12 @@
-import { custoAposta, tarifaDentroDoLimite, totalBolao, valorCotaConfere } from '@shared/aposta.ts'
+import {
+  custoAposta,
+  MAX_PARTICIPANTES,
+  participantesPorQuantidade,
+  quantidadeDaDivisaoIgual,
+  tarifaDentroDoLimite,
+  totalBolao,
+  valorCotaConfere,
+} from '@shared/aposta.ts'
 import { formatarBRL, tentarDeReais } from '@shared/dinheiro.ts'
 import type { SlugModalidade } from '@shared/regras/tipos.ts'
 import { apostaSchema, type ApostaInput } from '@shared/schemas/aposta.ts'
@@ -28,6 +36,10 @@ export interface FormAposta {
   /** O usuário digitou o valor pago (senão usamos o calculado). */
   valorPagoManual: boolean
   dividir: boolean
+  /** "pessoas": nome e peso de cada um; "quantidade": só quantas pessoas, partes iguais. */
+  modoDivisao: 'pessoas' | 'quantidade'
+  /** Quantas pessoas dividem (o usuário incluído), no modo "quantidade". */
+  qtdPessoas: string
   participantes: { nome: string; peso: string; ehUsuario: boolean }[]
   dataAposta: string
   localCompra: string
@@ -49,6 +61,8 @@ export function valoresIniciais(): FormAposta {
     valorPago: '',
     valorPagoManual: false,
     dividir: false,
+    modoDivisao: 'pessoas',
+    qtdPessoas: '2',
     participantes: [],
     dataAposta: hojeIso(),
     localCompra: '',
@@ -60,6 +74,15 @@ const reais = (c: number | null | undefined) =>
   c === null || c === undefined ? '' : formatarBRL(c).replace('R$ ', '')
 
 export function apostaParaForm(a: ApostaCompleta): FormAposta {
+  const qtdIgual = quantidadeDaDivisaoIgual(
+    a.valor_pago_centavos,
+    a.participantes.map((p) => ({
+      nome: p.nome,
+      peso: Number(p.peso),
+      ehUsuario: p.eh_usuario,
+      contribuicaoCentavos: p.contribuicao_centavos,
+    })),
+  )
   return {
     modalidadeSlug: (a.modalidades?.slug ?? '') as SlugModalidade,
     tipo: a.tipo,
@@ -74,6 +97,8 @@ export function apostaParaForm(a: ApostaCompleta): FormAposta {
     valorPago: reais(a.valor_pago_centavos),
     valorPagoManual: true,
     dividir: a.participantes.length > 0,
+    modoDivisao: qtdIgual ? 'quantidade' : 'pessoas',
+    qtdPessoas: String(qtdIgual ?? Math.max(2, a.participantes.length)),
     participantes: a.participantes.map((p) => ({
       nome: p.nome,
       peso: String(p.peso).replace('.', ','),
@@ -87,6 +112,29 @@ export function apostaParaForm(a: ApostaCompleta): FormAposta {
 
 const inteiro = (t: string) => (/^\d+$/.test(t.trim()) ? Number(t.trim()) : Number.NaN)
 const peso = (t: string) => Number(t.trim().replace(',', '.'))
+
+/** Quantidade de pessoas do modo "quantidade", ou null se inválida (fora de 2…30). */
+export function qtdPessoasValida(f: Pick<FormAposta, 'qtdPessoas'>): number | null {
+  const n = inteiro(f.qtdPessoas)
+  return n >= 2 && n <= MAX_PARTICIPANTES ? n : null
+}
+
+function erroQtdPessoas(f: FormAposta): string | null {
+  if (!f.dividir || f.modoDivisao !== 'quantidade' || qtdPessoasValida(f) !== null) return null
+  return `Informe de 2 a ${MAX_PARTICIPANTES} pessoas (você incluído).`
+}
+
+function participantesDoForm(f: FormAposta, valorPago: number | null) {
+  if (!f.dividir) return []
+  if (f.modoDivisao === 'quantidade') {
+    const n = qtdPessoasValida(f)
+    if (n === null) return []
+    const nomeUsuario = f.participantes.find((p) => p.ehUsuario)?.nome.trim() || 'Eu'
+    // Sem valor pago válido o schema já recusa; o rateio só precisa de um inteiro.
+    return participantesPorQuantidade(valorPago ?? 0, n, nomeUsuario)
+  }
+  return f.participantes.map((p) => ({ nome: p.nome, peso: peso(p.peso), ehUsuario: p.ehUsuario }))
+}
 
 /** Valor que o sistema sugere como "pago" (seção 5.3 e bolão: cotas × (cota + tarifa)). */
 export function valorCalculado(f: FormAposta, modalidade: Modalidade | undefined): number | null {
@@ -165,9 +213,7 @@ export function montarApostaInput(f: FormAposta, modalidade: Modalidade | undefi
     jogos: f.jogos.map((j) => j.dezenas),
     bolao,
     valorPagoCentavos: valorPagoEfetivo(f, modalidade) ?? Number.NaN,
-    participantes: f.dividir
-      ? f.participantes.map((p) => ({ nome: p.nome, peso: peso(p.peso), ehUsuario: p.ehUsuario }))
-      : [],
+    participantes: participantesDoForm(f, valorPagoEfetivo(f, modalidade)),
     localCompra: f.localCompra.trim() || null,
     observacao: f.observacao.trim() || null,
   }
@@ -208,10 +254,13 @@ export function criarResolver(
     const resultado = apostaSchema.safeParse(
       montarApostaInput(valores, obterModalidade(valores.modalidadeSlug)),
     )
-    if (resultado.success) return { values: valores, errors: {} }
+    const erroQtd = erroQtdPessoas(valores)
+    if (resultado.success && !erroQtd) return { values: valores, errors: {} }
 
     // O React Hook Form espera erros aninhados (jogos[0], jogos.root…).
     const errors: Record<string, unknown> = {}
+    if (erroQtd) errors.qtdPessoas = { type: 'custom', message: erroQtd }
+    if (resultado.success) return { values: {}, errors: errors as FieldErrors<FormAposta> }
     for (const issue of resultado.error.issues) {
       const caminho = issue.path.join('.')
       const campo =
@@ -236,6 +285,8 @@ export function criarResolver(
 }
 
 export function paraApostaInput(f: FormAposta, modalidade: Modalidade | undefined): ApostaInput {
+  const erroQtd = erroQtdPessoas(f)
+  if (erroQtd) throw new Error(erroQtd)
   return apostaSchema.parse(montarApostaInput(f, modalidade))
 }
 

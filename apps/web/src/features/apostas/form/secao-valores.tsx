@@ -20,8 +20,12 @@ export function SecaoValores({ modalidade }: { modalidade: Modalidade | undefine
 
   // Enquanto o usuário não digita o valor pago, mostramos o calculado (campo controlado).
   // O RHF recebe um ref só de foco: com o <input> real, ele regravava '' no DOM ao montar a etapa.
+  // Sem o <input> real, o RHF lê `ref.value` (undefined) a cada tecla: gravamos o texto do evento.
   const { ref: refPago, ...registroPago } = register('valorPago', {
-    onChange: () => setValue('valorPagoManual', true),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      setValue('valorPagoManual', true)
+      setValue('valorPago', e.target.value)
+    },
   })
 
   return (

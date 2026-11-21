@@ -51,7 +51,7 @@ insert into public.anexos (aposta_id, storage_path, mime, tamanho_bytes)
 values (:'aposta_b', :'b_id' || '/' || :'aposta_b' || '/foto.webp', 'image/webp', 1000);
 select tests.sair();
 
-select plan(41);
+select plan(43);
 
 -- ===========================================================================
 -- Isolamento: A não lê, não altera e não exclui nada de B (todas as tabelas)
@@ -196,6 +196,22 @@ select is((select gasto_usuario_centavos from public.vw_apostas_resumo where id 
   'gasto do usuário proporcional ao peso');
 select is((select saldo_centavos from public.vw_apostas_resumo where id = :'aposta_b'), -2100::bigint,
   'saldo = recuperado − gasto');
+
+-- Divisão "só a quantidade" (seção 11.2): R$ 10,00 entre 3 pessoas genéricas, com as
+-- contribuições do maior resto (334/333/333) → o gasto do usuário é exatamente R$ 3,34.
+select public.salvar_aposta(jsonb_build_object(
+  'modalidade_slug', 'megasena', 'tipo', 'simples', 'concurso_inicial', 3070, 'qtd_concursos', 1,
+  'data_aposta', '2026-11-21', 'valor_pago_centavos', 1000,
+  'jogos', jsonb_build_array(jsonb_build_array(1, 2, 3, 4, 5, 6)),
+  'participantes', jsonb_build_array(
+    jsonb_build_object('nome', 'Eu', 'peso', 1, 'eh_usuario', true, 'contribuicao_centavos', 334),
+    jsonb_build_object('nome', 'Pessoa 2', 'peso', 1, 'eh_usuario', false, 'contribuicao_centavos', 333),
+    jsonb_build_object('nome', 'Pessoa 3', 'peso', 1, 'eh_usuario', false, 'contribuicao_centavos', 333))
+)) as aposta_qtd \gset
+select is((select gasto_usuario_centavos from public.vw_apostas_resumo where id = :'aposta_qtd'), 334::bigint,
+  'divisão por quantidade: gasto do usuário = a parte dele no maior resto');
+select is((select qtd_participantes from public.vw_apostas_resumo where id = :'aposta_qtd'), 3,
+  'divisão por quantidade: participantes genéricos contados');
 
 -- Exclusão em cascata pelo dono
 delete from public.apostas where id = :'aposta_b';
