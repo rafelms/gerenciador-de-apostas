@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -34,6 +35,11 @@ interface AuthContexto {
   precisaMfa: boolean
   ehAdmin: boolean
   sair: () => Promise<void>
+  /**
+   * Saiu pelo botão "Sair" (não por sessão expirada): o login seguinte começa no Início,
+   * e não na última tela de quem usou o aparelho antes.
+   */
+  saiuPorConta: () => boolean
   recarregar: () => Promise<void>
 }
 
@@ -61,6 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [sessao, setSessao] = useState<Session | null>(null)
   const [sessaoCarregada, setSessaoCarregada] = useState(false)
+  // Ref (e não estado): só é lida quando a guarda redireciona, que já re-renderiza pela sessão.
+  const saiuPeloBotao = useRef(false)
+  const saiuPorConta = useCallback(() => saiuPeloBotao.current, [])
 
   useEffect(() => {
     // Importante: não chamar o Supabase de dentro deste callback (pode travar o lock
@@ -69,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((evento, novaSessao) => {
       setSessao(novaSessao)
       setSessaoCarregada(true)
+      if (evento === 'SIGNED_IN') saiuPeloBotao.current = false
       // Qualquer saída (botão, "sair de todos", sessão expirada) leva os dados junto.
       if (evento === 'SIGNED_OUT') {
         queryClient.clear()
@@ -109,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId, consulta.isSuccess, consulta.isFetched, consulta.data])
 
   const sair = useCallback(async () => {
+    saiuPeloBotao.current = true
     await supabase.auth.signOut()
     // Logout limpa todo o cache de dados do servidor (seção 8.1), também o salvo no aparelho.
     queryClient.clear()
@@ -144,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       precisaMfa: aalProximo === 'aal2' && aalAtual !== 'aal2',
       ehAdmin: perfil?.papel === 'admin' && perfil.ativo,
       sair,
+      saiuPorConta,
       recarregar,
     }),
     [
@@ -155,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       aalAtual,
       aalProximo,
       sair,
+      saiuPorConta,
       recarregar,
     ],
   )
