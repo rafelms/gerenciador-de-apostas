@@ -514,12 +514,14 @@ Sem participantes: fração = 1.
 ### 8.2 RLS (Row Level Security)
 **Toda tabela do schema `public` tem RLS habilitada.** Um teste pgTAP falha se alguma tabela ficar sem RLS ou sem política.
 
-Helpers (`security definer`, `search_path = ''`, `stable`):
+Helpers (`security definer`, `search_path = ''`, `stable`), no schema **`privado`** desde a F5.6 (fora de `api.schemas`, então não viram `/rest/v1/rpc`; só `authenticated` e `service_role` têm `usage`/`execute`):
 ```sql
-create function public.eh_admin() returns boolean ... -- papel = 'admin' and ativo
-create function public.eh_ativo() returns boolean ... -- ativo = true
-create function public.aal2() returns boolean as $$ select coalesce(auth.jwt()->>'aal','') = 'aal2' $$ ...
+create function privado.eh_admin() returns boolean ... -- papel = 'admin' and ativo
+create function privado.eh_ativo() returns boolean ... -- ativo = true
+create function privado.aal2() returns boolean as $$ select coalesce(auth.jwt()->>'aal','') = 'aal2' $$ ...
 ```
+Políticas e funções novas usam `privado.eh_ativo()` etc. (os exemplos abaixo com `public.` são da época da criação; as políticas guardam a função, não o nome).
+- **Nenhuma função do schema `public` é executável por `anon`** (EXECUTE revogado de PUBLIC/anon, também nos privilégios padrão; teste pgTAP em `001_rls_cobertura`).
 
 Padrão para tabelas do usuário (`apostas`, `aposta_jogos`, `aposta_concursos`, `participantes`, `orcamentos`, `anexos`, `importacoes`):
 ```sql
@@ -850,8 +852,8 @@ Ferramenta para os jogos de uma aposta ou para um conjunto colado/digitado. Foco
 - Toda a área exige MFA (`aal2`); sem ele, redireciona para ativar MFA.
 
 ### 11.14 PWA
-- Manifest (nome, ícones, `theme_color #282B4A`, `background_color #EEEBDA`), instalável.
-- Cache do shell; offline mostra a última versão em cache **somente leitura** com o aviso "sem conexão".
+- Manifest (nome, ícones, `theme_color #282B4A`, `background_color #F2F2F4`), instalável; `index.html` traz uma abertura estática com a marca (primeiro paint antes do JS).
+- Cache do shell (Workbox, sem os chunks de PDF/planilha); o cache do TanStack Query fica no `localStorage` (só apostas, concursos, modalidades e notificações; nada de token nem URL assinada), por 7 dias, e sai no logout ou na troca de usuário. Offline mostra a última versão em cache **somente leitura** com o aviso "sem conexão".
 - (Opcional) Web Share Target para receber PDF compartilhado do app da CAIXA.
 
 ---
@@ -1063,10 +1065,10 @@ Remodelação de 11/2026 (referência visual: o case "Keel", fintech SaaS, no Be
 | F5.6 | Revisão de segurança: checklist da seção 8 inteiro, `supabase db lint`, Security Advisor do painel sem alertas |
 
 **Aceite F5:**
-- [ ] Analisador: 3 jogos de Lotofácil mostram distribuição baixos/médios/altos correta e matriz 3×3 de sobreposição.
-- [ ] Upload de anexo de 8 MB é comprimido abaixo de 5 MB ou recusado com mensagem clara.
-- [ ] Outro usuário não acessa o anexo nem com o caminho exato (teste).
-- [ ] App instalável no Android/iOS; abre offline com dados em cache e o aviso.
+- [x] Analisador: 3 jogos de Lotofácil mostram distribuição baixos/médios/altos correta e matriz 3×3 de sobreposição.
+- [x] Upload de anexo de 8 MB é comprimido abaixo de 5 MB ou recusado com mensagem clara.
+- [x] Outro usuário não acessa o anexo nem com o caminho exato (teste).
+- [x] App instalável no Android/iOS; abre offline com dados em cache e o aviso. (Manifest + service worker verificados no build; a instalação num aparelho físico fica para conferir após o deploy.)
 
 ### FASE 6 — Modalidades adicionais
 | ID | Tarefa |
@@ -1257,14 +1259,15 @@ A saída **não contém** nome nem CPF (há um teste que garante isso).
 ---
 
 ## Apêndice C — Checklist de segurança (revisar na F5.6)
-- [ ] Signup público desabilitado e testado
-- [ ] RLS em 100% das tabelas `public`; pgTAP de isolamento verde
-- [ ] Nenhuma política para `anon`
-- [ ] Funções `security definer` com `search_path = ''` e checagem de papel + `aal2`
-- [ ] Service role apenas em functions; nenhuma chave secreta no bundle (`grep` no `dist/` no CI)
-- [ ] Bucket privado + políticas por pasta + URL assinada curta
-- [ ] CSP/HSTS/nosniff/frame-ancestors na produção
-- [ ] Nome/CPF nunca persistidos; código do recibo só como hash
-- [ ] MFA obrigatório para admin
-- [ ] Usuário desativado sem acesso e com sessões revogadas
-- [ ] Security Advisor e Performance Advisor do Supabase sem alertas
+Revisado na F5.6 (20–21/11/2026):
+- [x] Signup público desabilitado e testado (`enable_signup = false`; e2e da F0)
+- [x] RLS em 100% das tabelas `public`; pgTAP de isolamento verde
+- [x] Nenhuma política para `anon` (e nenhum EXECUTE de `anon` em função `public`)
+- [x] Funções `security definer` com `search_path = ''` e checagem de papel + `aal2`
+- [x] Service role apenas em functions; nenhuma chave secreta no bundle (`grep` no `dist/` no CI)
+- [x] Bucket privado + políticas por pasta + URL assinada curta
+- [ ] CSP/HSTS/nosniff/frame-ancestors na produção — configurados no `vercel.json`; falta conferir os headers no domínio de produção
+- [x] Nome/CPF nunca persistidos; código do recibo só como hash
+- [x] MFA obrigatório para admin
+- [x] Usuário desativado sem acesso e com sessões revogadas (RLS `eh_ativo()` + `ban_duration`)
+- [ ] Security Advisor e Performance Advisor do Supabase sem alertas — restam, aceitos: (a) os 4 RPCs `security definer` que existem para isso (`fn_admin_listar_usuarios`, `fn_admin_metricas`, `fn_limpar_conferencia`, `fn_marcar_resgatado`; cada um checa admin+`aal2` ou o dono por dentro); (b) proteção contra senha vazada (HaveIBeenPwned), só nos planos pagos; (c) avisos INFO de índice ainda não usado
