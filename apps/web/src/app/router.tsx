@@ -5,7 +5,6 @@ import { RotaAdmin, RotaProtegida, RotaPublica } from '@/features/auth/guardas'
 
 // Telas internas carregadas sob demanda: o bundle inicial fica só com o login
 // e a casca do app (seção 16: bundle inicial < 250 KB gzip).
-const futuras = () => import('./paginas-futuras')
 
 // Rotas da seção 12.6. A rota raiz (sem caminho) só existe para o errorElement valer
 // para todas: erro numa tela ou arquivo de tela que sumiu após um deploy.
@@ -112,7 +111,9 @@ export const router = createBrowserRouter([
               },
               {
                 path: '/analisador',
-                lazy: async () => ({ Component: (await futuras()).AnalisadorPage }),
+                lazy: async () => ({
+                  Component: (await import('@/features/analisador/analisador-page')).AnalisadorPage,
+                }),
               },
               {
                 path: '/simulador-rateio',
