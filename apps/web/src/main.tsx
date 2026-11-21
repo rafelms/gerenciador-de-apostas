@@ -13,6 +13,11 @@ window.addEventListener('vite:preloadError', (evento) => {
   if (recarregarUmaVez()) evento.preventDefault()
 })
 
+// Service worker do PWA (só no build): atualiza sozinho quando sai um deploy novo.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Providers>
