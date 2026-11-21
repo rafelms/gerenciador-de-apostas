@@ -5,12 +5,18 @@ import { useAuth } from './auth-provider'
 
 /** Exige sessão ativa. Se o usuário tem MFA cadastrado e ainda não validou, vai para /mfa. */
 export function RotaProtegida() {
-  const { carregando, sessao, perfil, precisaMfa } = useAuth()
+  const { carregando, sessao, perfil, precisaMfa, saiuPorConta } = useAuth()
   const location = useLocation()
 
   if (carregando) return <CarregandoTela />
   if (!sessao || !perfil)
-    return <Navigate to="/login" replace state={{ de: location.pathname + location.search }} />
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={saiuPorConta() ? undefined : { de: location.pathname + location.search }}
+      />
+    )
   if (precisaMfa)
     return <Navigate to="/mfa" replace state={{ de: location.pathname + location.search }} />
   return <Outlet />
