@@ -1,11 +1,12 @@
-// Período do dashboard (seção 11.7): mês atual por padrão; 3 meses, ano, tudo ou
-// personalizado. Fica na URL (?periodo=3m&modalidade=megasena) como os filtros da lista.
+// Período do dashboard (seção 11.7): mês atual por padrão; um mês escolhido, 3 meses, ano,
+// tudo ou personalizado. Fica na URL (?periodo=escolher&mes=2026-10) como os filtros da lista.
 
-export const PERIODOS = ['mes', '3m', 'ano', 'tudo', 'personalizado'] as const
+export const PERIODOS = ['mes', 'escolher', '3m', 'ano', 'tudo', 'personalizado'] as const
 export type Periodo = (typeof PERIODOS)[number]
 
 export const rotulosPeriodo: Record<Periodo, string> = {
   mes: 'Este mês',
+  escolher: 'Escolher mês',
   '3m': 'Últimos 3 meses',
   ano: 'Este ano',
   tudo: 'Tudo',
@@ -27,12 +28,15 @@ const MESES = [
   'dezembro',
 ]
 const DATA = /^\d{4}-\d{2}-\d{2}$/
+const MES = /^\d{4}-(0[1-9]|1[0-2])$/
 
 export interface FiltrosDashboard {
   periodo: Periodo
   /** yyyy-mm-dd, só no personalizado. */
   de?: string
   ate?: string
+  /** yyyy-mm, só no "escolher mês". */
+  mes?: string
   modalidade?: string
 }
 
@@ -60,9 +64,11 @@ export function filtrosDashboardDaUrl(p: URLSearchParams): FiltrosDashboard {
     : 'mes'
   const de = DATA.test(p.get('de') ?? '') ? p.get('de')! : undefined
   const ate = DATA.test(p.get('ate') ?? '') ? p.get('ate')! : undefined
+  const mes = MES.test(p.get('mes') ?? '') ? p.get('mes')! : undefined
   return {
     periodo,
     ...(periodo === 'personalizado' && { de, ate }),
+    ...(periodo === 'escolher' && { mes }),
     modalidade: p.get('modalidade') || undefined,
   }
 }
@@ -74,6 +80,7 @@ export function filtrosDashboardParaUrl(f: FiltrosDashboard): URLSearchParams {
     if (f.de) p.set('de', f.de)
     if (f.ate) p.set('ate', f.ate)
   }
+  if (f.periodo === 'escolher' && f.mes) p.set('mes', f.mes)
   if (f.modalidade) p.set('modalidade', f.modalidade)
   return p
 }
@@ -83,6 +90,17 @@ export function intervaloDoPeriodo(f: FiltrosDashboard, hoje: string): Intervalo
   const [ano, mes] = hoje.split('-').map(Number) as [number, number]
   const fimDoMes = `${ano}-${pad(mes)}-${pad(ultimoDia(ano, mes))}`
   switch (f.periodo) {
+    case 'escolher': {
+      // Sem mês válido na URL, vale o mês atual.
+      const [a, m] = (f.mes && MES.test(f.mes) ? f.mes : hoje.slice(0, 7))
+        .split('-')
+        .map(Number) as [number, number]
+      return {
+        inicio: `${a}-${pad(m)}-01`,
+        fim: `${a}-${pad(m)}-${pad(ultimoDia(a, m))}`,
+        rotulo: `${MESES[m - 1]} de ${a}`,
+      }
+    }
     case 'mes':
       return {
         inicio: `${ano}-${pad(mes)}-01`,
@@ -120,6 +138,23 @@ export function intervaloDoPeriodo(f: FiltrosDashboard, hoje: string): Intervalo
       return { inicio, fim, rotulo }
     }
   }
+}
+
+/** O mês `delta` meses depois de `mes` (yyyy-mm). */
+export function mesVizinho(mes: string, delta: number): string {
+  const [a, m] = mes.split('-').map(Number) as [number, number]
+  const d = inicioDoMes(a, m, -delta)
+  return `${d.ano}-${pad(d.mes)}`
+}
+
+/** Os `qtd` meses até o de `hoje`, do mais recente para o mais antigo, para o seletor. */
+export function mesesParaEscolher(hoje: string, qtd = 36): { valor: string; rotulo: string }[] {
+  const atual = hoje.slice(0, 7)
+  return Array.from({ length: qtd }, (_, i) => {
+    const valor = mesVizinho(atual, -i)
+    const [a, m] = valor.split('-').map(Number) as [number, number]
+    return { valor, rotulo: `${MESES[m - 1]} de ${a}` }
+  })
 }
 
 export interface PontoMensal {

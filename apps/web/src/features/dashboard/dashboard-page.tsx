@@ -2,6 +2,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   ArrowDownRight,
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   Hash,
   ListFilter,
   Percent,
@@ -24,6 +26,7 @@ import { SelectNativo } from '@/components/select-nativo'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/auth-provider'
 import { ApostaCard } from '@/features/apostas/aposta-card'
@@ -36,6 +39,8 @@ import {
   filtrosDashboardDaUrl,
   filtrosDashboardParaUrl,
   intervaloDoPeriodo,
+  mesesParaEscolher,
+  mesVizinho,
   PERIODOS,
   rotulosPeriodo,
   serieMensal,
@@ -67,6 +72,9 @@ export function DashboardPage() {
   const filtros = filtrosDashboardDaUrl(params)
   const hoje = hojeIso()
   const intervalo = intervaloDoPeriodo(filtros, hoje)
+  // O card de orçamento segue o mês escolhido; nos outros períodos, o mês atual.
+  const mesOrcamento =
+    filtros.periodo === 'escolher' ? intervalo.inicio!.slice(0, 7) : hoje.slice(0, 7)
   const { data: modalidades } = useModalidades()
   const modalidade = modalidades?.find((m) => m.slug === filtros.modalidade)
 
@@ -116,7 +124,11 @@ export function DashboardPage() {
         <Campo label="Período" className="sm:w-48">
           <SelectNativo
             value={filtros.periodo}
-            onChange={(e) => mudar({ periodo: e.target.value as FiltrosDashboard['periodo'] })}
+            onChange={(e) => {
+              const periodo = e.target.value as FiltrosDashboard['periodo']
+              // Ao escolher um mês, começa no mês atual.
+              mudar({ periodo, ...(periodo === 'escolher' && { mes: hoje.slice(0, 7) }) })
+            }}
           >
             {PERIODOS.map((p) => (
               <option key={p} value={p}>
@@ -138,6 +150,14 @@ export function DashboardPage() {
             ))}
           </SelectNativo>
         </Campo>
+        {filtros.periodo === 'escolher' && (
+          <SeletorMes
+            mes={intervalo.inicio!.slice(0, 7)}
+            rotulo={intervalo.rotulo}
+            hoje={hoje}
+            onMudar={(mes) => mudar({ mes })}
+          />
+        )}
         {filtros.periodo === 'personalizado' && (
           <>
             <Campo label="De" className="sm:w-44">
@@ -257,13 +277,13 @@ export function DashboardPage() {
       <Card className="mb-8 gap-3 p-5" role="region" aria-labelledby="titulo-orcamento">
         <div className="flex items-center justify-between gap-2">
           <h2 id="titulo-orcamento" className="text-lg font-medium first-letter:uppercase">
-            Orçamento de {rotuloMes(hoje.slice(0, 7))}
+            Orçamento de {rotuloMes(mesOrcamento)}
           </h2>
           <Button asChild variant="link" className="h-auto px-0">
             <Link to="/orcamento">Ajustar</Link>
           </Button>
         </div>
-        <ResumoOrcamento mes={hoje.slice(0, 7)} convite />
+        <ResumoOrcamento mes={mesOrcamento} convite />
       </Card>
 
       {dados.data && totais && totais.qtdApostas > 0 && (
@@ -522,5 +542,60 @@ function DistribuicaoAcertos({ dados }: { dados: DadosDashboard }) {
         </table>
       }
     />
+  )
+}
+
+/** Mês do "escolher mês": setas para o anterior/próximo e a lista dos últimos 3 anos. */
+function SeletorMes({
+  mes,
+  rotulo,
+  hoje,
+  onMudar,
+}: {
+  mes: string
+  rotulo: string
+  hoje: string
+  onMudar: (mes: string) => void
+}) {
+  const meses = mesesParaEscolher(hoje)
+  // Um mês mais antigo vindo da URL continua aparecendo na lista.
+  const opcoes = meses.some((m) => m.valor === mes) ? meses : [...meses, { valor: mes, rotulo }]
+  const atual = hoje.slice(0, 7)
+  const maisAntigo = meses.at(-1)!.valor
+  return (
+    <div className="col-span-2 grid gap-2">
+      <Label htmlFor="dashboard-mes">Mês</Label>
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-11 shrink-0"
+          aria-label="Mês anterior"
+          disabled={mes <= maisAntigo}
+          onClick={() => onMudar(mesVizinho(mes, -1))}
+        >
+          <ChevronLeft aria-hidden="true" />
+        </Button>
+        <div className="min-w-0 flex-1 sm:w-52 sm:flex-none">
+          <SelectNativo id="dashboard-mes" value={mes} onChange={(e) => onMudar(e.target.value)}>
+            {opcoes.map((m) => (
+              <option key={m.valor} value={m.valor}>
+                {m.rotulo}
+              </option>
+            ))}
+          </SelectNativo>
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-11 shrink-0"
+          aria-label="Próximo mês"
+          disabled={mes >= atual}
+          onClick={() => onMudar(mesVizinho(mes, 1))}
+        >
+          <ChevronRight aria-hidden="true" />
+        </Button>
+      </div>
+    </div>
   )
 }

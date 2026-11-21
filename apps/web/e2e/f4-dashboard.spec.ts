@@ -176,6 +176,35 @@ test.describe('Aceite F4 (dashboard)', () => {
     ).toHaveCount(3)
   })
 
+  test('escolher mês: começa no atual e navega pelas setas', async ({ page }) => {
+    const { id, email } = await criarUsuario('membro')
+    await semearApostas(email, id)
+    await entrarPelaTela(page, email)
+    await expect(page).toHaveURL('/')
+    const atual = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+    }).format(new Date())
+    await page.getByLabel('Período', { exact: true }).selectOption('escolher')
+    await expect(page).toHaveURL(`/?periodo=escolher&mes=${atual}`)
+    await expect(page.getByRole('button', { name: 'Próximo mês' })).toBeDisabled()
+
+    // Outubro de 2026: só a Mega premiada (R$ 6,00 gastos, R$ 1.000,00 de volta).
+    await page.getByLabel('Mês', { exact: true }).selectOption('2026-10')
+    await expect(page).toHaveURL('/?periodo=escolher&mes=2026-10')
+    await expect(page.getByText('Resumo de outubro de 2026')).toBeVisible()
+    await expect(kpi(page, 'Gasto')).toContainText('R$ 6,00')
+    await expect(kpi(page, 'Recuperado')).toContainText('R$ 1.000,00')
+    await expect(page.getByRole('heading', { name: 'Orçamento de outubro de 2026' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Mês anterior' }).click()
+    await expect(page).toHaveURL('/?periodo=escolher&mes=2026-09')
+    await expect(kpi(page, 'Gasto')).toContainText('R$ 6,00')
+    await expect(kpi(page, 'Recuperado')).toContainText('R$ 0,00')
+    await semRolagemHorizontal(page)
+  })
+
   test('período sem apostas mostra o estado vazio, sem gráficos', async ({ page }) => {
     const { email } = await criarUsuario('membro')
     await entrarPelaTela(page, email)

@@ -4,6 +4,8 @@ import {
   filtrosDashboardDaUrl,
   filtrosDashboardParaUrl,
   intervaloDoPeriodo,
+  mesesParaEscolher,
+  mesVizinho,
   serieMensal,
 } from './periodo'
 
@@ -48,6 +50,41 @@ describe('intervaloDoPeriodo', () => {
       'desde 01/10/2026',
     )
     expect(intervaloDoPeriodo({ periodo: 'personalizado' }, HOJE).inicio).toBeNull()
+  })
+})
+
+describe('escolher mês', () => {
+  it('intervalo e rótulo do mês escolhido; sem mês válido, o atual', () => {
+    expect(intervaloDoPeriodo({ periodo: 'escolher', mes: '2026-02' }, HOJE)).toEqual({
+      inicio: '2026-02-01',
+      fim: '2026-02-28',
+      rotulo: 'fevereiro de 2026',
+    })
+    expect(intervaloDoPeriodo({ periodo: 'escolher', mes: '2026-13' }, HOJE).inicio).toBe(
+      '2026-11-01',
+    )
+    expect(intervaloDoPeriodo({ periodo: 'escolher' }, HOJE).rotulo).toBe('novembro de 2026')
+  })
+
+  it('mês na URL só no "escolher"', () => {
+    const f = { periodo: 'escolher', mes: '2025-12', modalidade: undefined }
+    expect(filtrosDashboardParaUrl(f as never).toString()).toBe('periodo=escolher&mes=2025-12')
+    expect(filtrosDashboardDaUrl(filtrosDashboardParaUrl(f as never))).toEqual(f)
+    expect(filtrosDashboardDaUrl(new URLSearchParams('periodo=ano&mes=2025-12'))).toEqual({
+      periodo: 'ano',
+      modalidade: undefined,
+    })
+  })
+
+  it('vizinhos atravessam o ano e a lista vai do atual para trás', () => {
+    expect(mesVizinho('2026-01', -1)).toBe('2025-12')
+    expect(mesVizinho('2025-12', 1)).toBe('2026-01')
+    const lista = mesesParaEscolher(HOJE, 3)
+    expect(lista).toEqual([
+      { valor: '2026-11', rotulo: 'novembro de 2026' },
+      { valor: '2026-10', rotulo: 'outubro de 2026' },
+      { valor: '2026-09', rotulo: 'setembro de 2026' },
+    ])
   })
 })
 
